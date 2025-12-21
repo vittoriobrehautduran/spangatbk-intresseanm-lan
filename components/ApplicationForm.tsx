@@ -1,0 +1,811 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { UseFormReturn } from 'react-hook-form';
+import type { ApplicationFormData } from '@/lib/validation';
+import type { Language } from '@/lib/translations';
+import { translations } from '@/lib/translations';
+import { format } from 'date-fns';
+
+interface ApplicationFormProps {
+    form: UseFormReturn<ApplicationFormData>;
+    language: Language;
+    onLanguageChange: (lang: Language) => void;
+    onPreview: () => void;
+}
+
+export default function ApplicationForm({ form, language, onLanguageChange, onPreview }: ApplicationFormProps) {
+    const t = translations[language];
+    const { register, watch, setValue, formState: { errors, touchedFields, isValid } } = form;
+    const [formValid, setFormValid] = useState(false);
+
+    // Trigger validation when form values change to update isValid state
+    useEffect(() => {
+        let timeoutId: NodeJS.Timeout;
+
+        const triggerValidation = async () => {
+            const result = await form.trigger(undefined, { shouldFocus: false });
+            setFormValid(result);
+        };
+
+        // Debounce validation to avoid too frequent checks
+        const debouncedValidation = () => {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+                triggerValidation();
+            }, 300);
+        };
+
+        // Initial validation
+        triggerValidation();
+
+        const subscription = form.watch(() => {
+            debouncedValidation();
+        });
+
+        return () => {
+            subscription.unsubscribe();
+            clearTimeout(timeoutId);
+        };
+    }, [form]);
+
+    const sportType = watch('sportType');
+    const studentPersonalNumber = watch('studentPersonalNumber');
+    const guardian1 = watch('guardian1');
+    const guardian2 = watch('guardian2');
+    const preferredTimes = watch('preferredTimes') || [];
+
+    // Calculate age from personal number (YYYYMMDD-XXXX format)
+    const calculateAgeFromPersonalNumber = (personalNumber: string): number | null => {
+        if (!personalNumber) return null;
+        // Remove dash and extract first 8 digits (YYYYMMDD)
+        const cleaned = personalNumber.replace(/-/g, '');
+        if (cleaned.length < 8) return null;
+
+        const year = parseInt(cleaned.substring(0, 4), 10);
+        const month = parseInt(cleaned.substring(4, 6), 10);
+        const day = parseInt(cleaned.substring(6, 8), 10);
+
+        if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+
+        const birthDate = new Date(year, month - 1, day);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+
+        return age;
+    };
+
+    const studentAge = calculateAgeFromPersonalNumber(studentPersonalNumber || '');
+    const isUnder18 = studentAge !== null && studentAge < 18;
+
+    // Automatically set hasGuardian based on age
+    useEffect(() => {
+        if (isUnder18) {
+            setValue('hasGuardian', true, { shouldValidate: true });
+        } else {
+            setValue('hasGuardian', false, { shouldValidate: true });
+        }
+    }, [isUnder18, setValue]);
+
+    const daysOfWeek = [
+        { key: 'monday', label: t.form.monday },
+        { key: 'tuesday', label: t.form.tuesday },
+        { key: 'wednesday', label: t.form.wednesday },
+        { key: 'thursday', label: t.form.thursday },
+        { key: 'friday', label: t.form.friday },
+        { key: 'saturday', label: t.form.saturday },
+        { key: 'sunday', label: t.form.sunday },
+    ];
+
+    // Generate hours 0-23 for 24-hour format
+    const hours = Array.from({ length: 24 }, (_, i) => {
+        const hour = i.toString().padStart(2, '0');
+        return { value: hour, label: hour };
+    });
+
+    const tennisLevels = [
+        { value: 'boll-lekis', label: t.levels.tennis['boll-lekis'] },
+        { value: 'minitennis', label: t.levels.tennis['minitennis'] },
+        { value: 'juniortennis', label: t.levels.tennis['juniortennis'] },
+        { value: 'vuxentennis', label: t.levels.tennis['vuxentennis'] },
+        { value: 'veterantennis_med_tranare', label: t.levels.tennis['veterantennis_med_tranare'] },
+    ];
+
+    const tableTennisLevels = [
+        { value: 'boll-lekis', label: t.levels.tableTennis['boll-lekis'] },
+        { value: 'juniorbordtennis', label: t.levels.tableTennis['juniorbordtennis'] },
+        { value: 'seniorbordtennis_med_tranare', label: t.levels.tableTennis['seniorbordtennis_med_tranare'] },
+        { value: 'veteranbordtennis_med_tranare', label: t.levels.tableTennis['veteranbordtennis_med_tranare'] },
+    ];
+
+    const handleLevelChange = (level: string, checked: boolean, type: 'tennis' | 'table_tennis') => {
+        const currentLevels = watch(type === 'tennis' ? 'tennisLevels' : 'tableTennisLevels') || [];
+        if (checked) {
+            setValue(type === 'tennis' ? 'tennisLevels' : 'tableTennisLevels', [...currentLevels, level] as any);
+        } else {
+            setValue(
+                type === 'tennis' ? 'tennisLevels' : 'tableTennisLevels',
+                currentLevels.filter((l: string) => l !== level) as any
+            );
+        }
+    };
+
+    const handleAddGuardian = () => {
+        if (!guardian1) {
+            setValue('guardian1', { name: '', email: '', phone: '' });
+            setValue('hasGuardian', true);
+        } else if (!guardian2) {
+            setValue('guardian2', { name: '', email: '', phone: '' });
+        }
+    };
+
+    const handleRemoveGuardian = (guardianNumber: 1 | 2) => {
+        if (guardianNumber === 1) {
+            setValue('guardian1', undefined);
+            if (!guardian2) {
+                setValue('hasGuardian', false);
+            } else {
+                setValue('guardian1', guardian2);
+                setValue('guardian2', undefined);
+            }
+        } else {
+            setValue('guardian2', undefined);
+        }
+    };
+
+    const handleAddTime = () => {
+        const current = preferredTimes || [];
+        // If no times exist, add first one, otherwise add new one
+        if (current.length === 0) {
+            setValue('preferredTimes', [{ day: 'monday', from: '', to: '' }]);
+        } else {
+            setValue('preferredTimes', [...current, { day: 'monday', from: '', to: '' }]);
+        }
+    };
+
+    const handleRemoveTime = (index: number) => {
+        const current = preferredTimes || [];
+        setValue('preferredTimes', current.filter((_: any, i: number) => i !== index));
+    };
+
+    const handleTimeChange = (index: number, field: 'day' | 'from' | 'to', value: string) => {
+        const current = preferredTimes || [];
+        const updated = [...current];
+        updated[index] = { ...updated[index], [field]: value };
+        // Filter out times that don't have both from and to filled
+        const filtered = updated.filter(time => time.from && time.to && time.day);
+        setValue('preferredTimes', filtered.length > 0 ? filtered : updated, { shouldValidate: true });
+    };
+
+    // Auto-format personal number: YYYYMMDD-XXXX
+    const handlePersonalNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let value = e.target.value.replace(/[^\d]/g, ''); // Remove all non-digits
+
+        // Limit to 12 digits
+        if (value.length > 12) {
+            value = value.slice(0, 12);
+        }
+
+        // Add dash after 8 digits
+        if (value.length > 8) {
+            value = value.slice(0, 8) + '-' + value.slice(8);
+        }
+
+        setValue('studentPersonalNumber', value, { shouldValidate: true });
+    };
+
+    // Format phone number (allow digits, spaces, dashes, plus, parentheses)
+    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'studentPhone' | 'guardian1.phone' | 'guardian2.phone') => {
+        const value = e.target.value;
+        // Allow digits, spaces, dashes, plus, parentheses
+        const cleaned = value.replace(/[^\d\s\-\+\(\)]/g, '');
+        setValue(field as any, cleaned, { shouldValidate: true });
+    };
+
+
+    return (
+        <div className="max-w-5xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
+            <form className="space-y-4 sm:space-y-5">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 relative">
+                    {/* Language selector at top right corner */}
+                    <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+                        <div className="flex gap-1.5">
+                            <button
+                                type="button"
+                                onClick={() => onLanguageChange('sv')}
+                                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors ${language === 'sv' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                    }`}
+                            >
+                                SV
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => onLanguageChange('en')}
+                                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors ${language === 'en' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                    }`}
+                            >
+                                EN
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Logo inside form box */}
+                    <div className="mb-4 sm:mb-5">
+                        <img
+                            src="/images/logo.jpg"
+                            alt="Spånga TBK Logo"
+                            className="h-16 sm:h-20 w-auto object-contain"
+                        />
+                    </div>
+                    <div className="mb-2">
+                        <h2 className="text-lg sm:text-xl font-bold text-red-600">{t.form.bindingRegistration}</h2>
+                    </div>
+                    <p className="text-xs sm:text-sm font-medium text-gray-600 mb-3 sm:mb-4">
+                        {t.form.date}: {format(new Date(), 'yyyy-MM-dd')}
+                    </p>
+
+                    <div className="mb-4 sm:mb-5">
+                        <label className="block text-sm sm:text-base font-semibold text-gray-900 mb-2 sm:mb-3">
+                            {t.form.sportInterest}
+                        </label>
+                        <div className="space-y-2 sm:space-y-2.5">
+                            <label className="flex items-center cursor-pointer">
+                                <input
+                                    type="radio"
+                                    value="tennis"
+                                    {...register('sportType')}
+                                    className="mr-2 sm:mr-3"
+                                />
+                                <span className="text-sm sm:text-base text-gray-900 font-medium">{t.form.tennis}</span>
+                            </label>
+                            <label className="flex items-center cursor-pointer">
+                                <input
+                                    type="radio"
+                                    value="table_tennis"
+                                    {...register('sportType')}
+                                    className="mr-2 sm:mr-3"
+                                />
+                                <span className="text-sm sm:text-base text-gray-900 font-medium">{t.form.tableTennis}</span>
+                            </label>
+                        </div>
+                        {errors.sportType && touchedFields.sportType && (
+                            <p className="text-red-600 text-xs sm:text-sm font-medium mt-1 sm:mt-2">{errors.sportType.message}</p>
+                        )}
+                    </div>
+
+                    {sportType === 'tennis' && (
+                        <div className="mb-4 sm:mb-5">
+                            <label className="block text-sm sm:text-base font-semibold text-gray-900 mb-2 sm:mb-3">
+                                {t.form.tennis}
+                            </label>
+                            <div className="space-y-1.5 sm:space-y-2">
+                                {tennisLevels.map((level) => (
+                                    <label key={level.value} className="flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={(watch('tennisLevels') || []).includes(level.value as any)}
+                                            onChange={(e) => handleLevelChange(level.value, e.target.checked, 'tennis')}
+                                            className="mr-2 sm:mr-3"
+                                        />
+                                        <span className="text-sm sm:text-base text-gray-900">{level.label}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {sportType === 'table_tennis' && (
+                        <div className="mb-4 sm:mb-5">
+                            <label className="block text-sm sm:text-base font-semibold text-gray-900 mb-2 sm:mb-3">
+                                {t.form.tableTennis}
+                            </label>
+                            <div className="space-y-1.5 sm:space-y-2">
+                                {tableTennisLevels.map((level) => (
+                                    <label key={level.value} className="flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={(watch('tableTennisLevels') || []).includes(level.value as any)}
+                                            onChange={(e) => handleLevelChange(level.value, e.target.checked, 'table_tennis')}
+                                            className="mr-2 sm:mr-3"
+                                        />
+                                        <span className="text-sm sm:text-base text-gray-900">{level.label}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="mb-4 sm:mb-5">
+                        <label className="block text-sm sm:text-base font-semibold text-gray-900 mb-1.5 sm:mb-2">
+                            {t.form.interestAreas}
+                        </label>
+                        <p className="text-xs sm:text-sm text-gray-700 mb-2 sm:mb-2.5 font-medium">{t.form.writeInterest}</p>
+                        <textarea
+                            {...register('interestAreas')}
+                            rows={3}
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 sm:py-2.5 text-sm sm:text-base"
+                        />
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">{t.form.studentInfo}</h2>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5 mb-3 sm:mb-3.5">
+                        <div>
+                            <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-1 sm:mb-1.5">
+                                {t.form.studentName} <span className="text-red-600">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                {...register('studentFirstName')}
+                                placeholder={language === 'sv' ? 'Förnamn' : 'First name'}
+                                className={`w-full border rounded-md px-3 py-2 sm:py-2.5 text-sm sm:text-base ${errors.studentFirstName ? 'border-red-500' : 'border-gray-300'
+                                    }`}
+                            />
+                            {errors.studentFirstName && touchedFields.studentFirstName && (
+                                <p className="text-red-600 text-xs sm:text-sm font-medium mt-1">{errors.studentFirstName.message}</p>
+                            )}
+                        </div>
+                        <div>
+                            <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-1 sm:mb-1.5">
+                                &nbsp;
+                            </label>
+                            <input
+                                type="text"
+                                {...register('studentLastName')}
+                                placeholder={language === 'sv' ? 'Efternamn' : 'Last name'}
+                                className={`w-full border rounded-md px-3 py-2 sm:py-2.5 text-sm sm:text-base ${errors.studentLastName ? 'border-red-500' : 'border-gray-300'
+                                    }`}
+                            />
+                            {errors.studentLastName && touchedFields.studentLastName && (
+                                <p className="text-red-600 text-xs sm:text-sm font-medium mt-1">{errors.studentLastName.message}</p>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="mb-3 sm:mb-3.5">
+                        <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-1 sm:mb-1.5">
+                            {t.form.personalNumber} <span className="text-red-600">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            {...register('studentPersonalNumber')}
+                            onChange={handlePersonalNumberChange}
+                            placeholder="YYYYMMDD-XXXX"
+                            maxLength={13}
+                            className={`w-full border rounded-md px-3 py-2 sm:py-2.5 text-sm sm:text-base ${errors.studentPersonalNumber ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                        />
+                        {errors.studentPersonalNumber && touchedFields.studentPersonalNumber && (
+                            <p className="text-red-600 text-xs sm:text-sm font-medium mt-1">{errors.studentPersonalNumber.message}</p>
+                        )}
+                    </div>
+
+                    <div className="mb-3 sm:mb-3.5">
+                        <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-1 sm:mb-1.5">
+                            {t.form.phone} <span className="text-red-600">*</span>
+                        </label>
+                        <input
+                            type="tel"
+                            {...register('studentPhone')}
+                            onChange={(e) => handlePhoneChange(e, 'studentPhone')}
+                            placeholder="+46 70 123 45 67"
+                            className={`w-full border rounded-md px-3 py-2 sm:py-2.5 text-sm sm:text-base ${errors.studentPhone ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                        />
+                        {errors.studentPhone && touchedFields.studentPhone && (
+                            <p className="text-red-600 text-xs sm:text-sm font-medium mt-1">{errors.studentPhone.message}</p>
+                        )}
+                    </div>
+
+                    <div className="mb-3 sm:mb-3.5">
+                        <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-1 sm:mb-1.5">
+                            {t.form.address} <span className="text-red-600">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            {...register('studentAddress')}
+                            placeholder={language === 'sv' ? 'Gatunamn 123, Postnummer Stad' : 'Street Name 123, Postal Code City'}
+                            className={`w-full border rounded-md px-3 py-2 sm:py-2.5 text-sm sm:text-base ${errors.studentAddress ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                        />
+                        {errors.studentAddress && touchedFields.studentAddress && (
+                            <p className="text-red-600 text-xs sm:text-sm font-medium mt-1">{errors.studentAddress.message}</p>
+                        )}
+                    </div>
+
+                    <div className="mb-3 sm:mb-3.5">
+                        <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-1 sm:mb-1.5">
+                            {t.form.email} <span className="text-red-600">*</span>
+                        </label>
+                        <input
+                            type="email"
+                            {...register('studentEmail')}
+                            className={`w-full border rounded-md px-3 py-2 sm:py-2.5 text-sm sm:text-base ${errors.studentEmail ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                        />
+                        {errors.studentEmail && touchedFields.studentEmail && (
+                            <p className="text-red-600 text-xs sm:text-sm font-medium mt-1">{errors.studentEmail.message}</p>
+                        )}
+                    </div>
+
+                </div>
+
+                {isUnder18 && (
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                        <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
+                            {t.form.guardianInfo} {isUnder18 && <span className="text-sm sm:text-base font-normal text-gray-600">({t.form.guardianInfoNote})</span>}
+                        </h2>
+                        {isUnder18 && (
+                            <p className="text-xs sm:text-sm font-semibold text-red-600 mb-3 sm:mb-4">
+                                {t.form.atLeastOneGuardian}
+                            </p>
+                        )}
+
+                        {!guardian1 && (
+                            <button
+                                type="button"
+                                onClick={handleAddGuardian}
+                                className="mb-3 text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-semibold"
+                            >
+                                + {t.form.addGuardian}
+                            </button>
+                        )}
+
+                        {guardian1 && (
+                            <div className="mb-3 p-3 sm:p-4 bg-gray-50 border border-gray-300 rounded-md">
+                                <div className="flex justify-between items-center mb-2 sm:mb-3">
+                                    <h3 className="text-sm sm:text-base font-semibold text-gray-900">{t.form.guardianName} 1 <span className="text-red-600">*</span></h3>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveGuardian(1)}
+                                        className="text-red-600 hover:text-red-800 text-xs sm:text-sm font-medium"
+                                    >
+                                        {language === 'sv' ? 'Ta bort' : 'Remove'}
+                                    </button>
+                                </div>
+                                <div className="space-y-2 sm:space-y-2.5">
+                                    <input
+                                        type="text"
+                                        {...register('guardian1.name')}
+                                        placeholder={t.form.guardianName}
+                                        className={`w-full border rounded-md px-3 py-2 sm:py-2.5 text-sm sm:text-base ${errors.guardian1?.name ? 'border-red-500' : 'border-gray-300'
+                                            }`}
+                                    />
+                                    {errors.guardian1?.name && touchedFields.guardian1?.name && (
+                                        <p className="text-red-600 text-xs sm:text-sm font-medium">{errors.guardian1.name.message}</p>
+                                    )}
+                                    <input
+                                        type="email"
+                                        {...register('guardian1.email')}
+                                        placeholder={t.form.email}
+                                        className={`w-full border rounded-md px-3 py-2 sm:py-2.5 text-sm sm:text-base ${errors.guardian1?.email ? 'border-red-500' : 'border-gray-300'
+                                            }`}
+                                    />
+                                    {errors.guardian1?.email && touchedFields.guardian1?.email && (
+                                        <p className="text-red-600 text-xs sm:text-sm font-medium">{errors.guardian1.email.message}</p>
+                                    )}
+                                    <input
+                                        type="tel"
+                                        {...register('guardian1.phone')}
+                                        onChange={(e) => handlePhoneChange(e, 'guardian1.phone')}
+                                        placeholder={t.form.phone}
+                                        className={`w-full border rounded-md px-3 py-2 sm:py-2.5 text-sm sm:text-base ${errors.guardian1?.phone ? 'border-red-500' : 'border-gray-300'
+                                            }`}
+                                    />
+                                    {errors.guardian1?.phone && touchedFields.guardian1?.phone && (
+                                        <p className="text-red-600 text-xs sm:text-sm font-medium">{errors.guardian1.phone.message}</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {guardian1 && !guardian2 && (
+                            <button
+                                type="button"
+                                onClick={handleAddGuardian}
+                                className="mb-3 text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-semibold"
+                            >
+                                + {t.form.addGuardian}
+                            </button>
+                        )}
+
+                        {guardian2 && (
+                            <div className="mb-3 p-3 sm:p-4 bg-gray-50 border border-gray-300 rounded-md">
+                                <div className="flex justify-between items-center mb-2 sm:mb-3">
+                                    <h3 className="text-sm sm:text-base font-semibold text-gray-900">{t.form.guardianName} 2</h3>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveGuardian(2)}
+                                        className="text-red-600 hover:text-red-800 text-xs sm:text-sm font-medium"
+                                    >
+                                        {language === 'sv' ? 'Ta bort' : 'Remove'}
+                                    </button>
+                                </div>
+                                <div className="space-y-2 sm:space-y-2.5">
+                                    <input
+                                        type="text"
+                                        {...register('guardian2.name')}
+                                        placeholder={t.form.guardianName}
+                                        className="w-full border border-gray-300 rounded-md px-3 py-2 sm:py-2.5 text-sm sm:text-base"
+                                    />
+                                    <input
+                                        type="email"
+                                        {...register('guardian2.email')}
+                                        placeholder={t.form.email}
+                                        className="w-full border border-gray-300 rounded-md px-3 py-2 sm:py-2.5 text-sm sm:text-base"
+                                    />
+                                    <input
+                                        type="tel"
+                                        {...register('guardian2.phone')}
+                                        onChange={(e) => handlePhoneChange(e, 'guardian2.phone')}
+                                        placeholder={t.form.phone}
+                                        className="w-full border border-gray-300 rounded-md px-3 py-2 sm:py-2.5 text-sm sm:text-base"
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">{t.form.groupPhotoConsent}</h2>
+                    <p className="text-xs sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3">{t.form.groupPhotoQuestion}</p>
+                    <div className="flex gap-3 sm:gap-4">
+                        <label className="flex items-center cursor-pointer">
+                            <input
+                                type="radio"
+                                checked={watch('groupPhotoConsent') === true}
+                                onChange={() => setValue('groupPhotoConsent', true)}
+                                className="mr-2 sm:mr-3"
+                            />
+                            <span className="text-sm sm:text-base text-gray-900 font-medium">{t.form.yes}</span>
+                        </label>
+                        <label className="flex items-center cursor-pointer">
+                            <input
+                                type="radio"
+                                checked={watch('groupPhotoConsent') === false}
+                                onChange={() => setValue('groupPhotoConsent', false)}
+                                className="mr-2 sm:mr-3"
+                            />
+                            <span className="text-sm sm:text-base text-gray-900 font-medium">{t.form.no}</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">{t.form.preferredTimes}</h2>
+                    <p className="text-xs sm:text-sm font-medium text-gray-700 mb-3 sm:mb-4">{t.form.preferredTimesNote}</p>
+
+                    {preferredTimes.length === 0 ? (
+                        <div className="mb-3 p-3 sm:p-4 bg-gray-50 border border-gray-300 rounded-md">
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
+                                        {language === 'sv' ? 'Dag' : 'Day'}
+                                    </label>
+                                    <select
+                                        value="monday"
+                                        onChange={(e) => {
+                                            handleAddTime();
+                                            setTimeout(() => {
+                                                handleTimeChange(0, 'day', e.target.value);
+                                            }, 0);
+                                        }}
+                                        className="w-full border border-gray-300 rounded-md px-3 py-2 sm:py-2.5 text-sm sm:text-base"
+                                    >
+                                        {daysOfWeek.map((day) => (
+                                            <option key={day.key} value={day.key}>
+                                                {day.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
+                                            {language === 'sv' ? 'Från' : 'From'}
+                                        </label>
+                                        <select
+                                            onChange={(e) => {
+                                                if (preferredTimes.length === 0) {
+                                                    handleAddTime();
+                                                }
+                                                setTimeout(() => {
+                                                    handleTimeChange(0, 'from', e.target.value);
+                                                }, 0);
+                                            }}
+                                            className="w-full border border-gray-300 rounded-md px-3 py-2 sm:py-2.5 text-sm sm:text-base"
+                                        >
+                                            <option value="">{language === 'sv' ? 'Välj timme' : 'Select hour'}</option>
+                                            {hours.map((hour) => (
+                                                <option key={hour.value} value={hour.value}>
+                                                    {hour.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
+                                            {language === 'sv' ? 'Till' : 'To'}
+                                        </label>
+                                        <select
+                                            onChange={(e) => {
+                                                if (preferredTimes.length === 0) {
+                                                    handleAddTime();
+                                                }
+                                                setTimeout(() => {
+                                                    handleTimeChange(0, 'to', e.target.value);
+                                                }, 0);
+                                            }}
+                                            className="w-full border border-gray-300 rounded-md px-3 py-2 sm:py-2.5 text-sm sm:text-base"
+                                        >
+                                            <option value="">{language === 'sv' ? 'Välj timme' : 'Select hour'}</option>
+                                            {hours.map((hour) => (
+                                                <option key={hour.value} value={hour.value}>
+                                                    {hour.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        preferredTimes.map((time, index) => (
+                            <div key={index} className="mb-3 p-3 sm:p-4 bg-gray-50 border border-gray-300 rounded-md">
+                                <div className="flex justify-between items-center mb-3">
+                                    <h3 className="text-sm sm:text-base font-semibold text-gray-900">
+                                        {language === 'sv' ? 'Träningsdag' : 'Training day'} {index + 1}
+                                    </h3>
+                                    {preferredTimes.length > 1 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveTime(index)}
+                                            className="text-red-600 hover:text-red-800 text-xs sm:text-sm font-medium"
+                                        >
+                                            {language === 'sv' ? 'Ta bort' : 'Remove'}
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
+                                            {language === 'sv' ? 'Dag' : 'Day'}
+                                        </label>
+                                        <select
+                                            value={time.day}
+                                            onChange={(e) => handleTimeChange(index, 'day', e.target.value)}
+                                            className="w-full border border-gray-300 rounded-md px-3 py-2 sm:py-2.5 text-sm sm:text-base"
+                                        >
+                                            {daysOfWeek.map((day) => (
+                                                <option key={day.key} value={day.key}>
+                                                    {day.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
+                                                {language === 'sv' ? 'Från' : 'From'}
+                                            </label>
+                                            <select
+                                                value={time.from}
+                                                onChange={(e) => handleTimeChange(index, 'from', e.target.value)}
+                                                className="w-full border border-gray-300 rounded-md px-3 py-2 sm:py-2.5 text-sm sm:text-base"
+                                            >
+                                                <option value="">{language === 'sv' ? 'Välj timme' : 'Select hour'}</option>
+                                                {hours.map((hour) => (
+                                                    <option key={hour.value} value={hour.value}>
+                                                        {hour.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
+                                                {language === 'sv' ? 'Till' : 'To'}
+                                            </label>
+                                            <select
+                                                value={time.to}
+                                                onChange={(e) => handleTimeChange(index, 'to', e.target.value)}
+                                                className="w-full border border-gray-300 rounded-md px-3 py-2 sm:py-2.5 text-sm sm:text-base"
+                                            >
+                                                <option value="">{language === 'sv' ? 'Välj timme' : 'Select hour'}</option>
+                                                {hours.map((hour) => (
+                                                    <option key={hour.value} value={hour.value}>
+                                                        {hour.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                {errors.preferredTimes && index === 0 && touchedFields.preferredTimes && (
+                                    <p className="text-red-600 text-xs sm:text-sm font-medium mt-2">{errors.preferredTimes.message}</p>
+                                )}
+                            </div>
+                        ))
+                    )}
+
+                    <button
+                        type="button"
+                        onClick={handleAddTime}
+                        className="mt-2 text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-semibold"
+                    >
+                        + {language === 'sv' ? 'Lägg till träningsdag' : 'Add training day'}
+                    </button>
+                    {errors.preferredTimes && touchedFields.preferredTimes && preferredTimes.length === 0 && (
+                        <p className="text-red-600 text-xs sm:text-sm font-medium mt-2">{errors.preferredTimes.message}</p>
+                    )}
+                </div>
+
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                    <label className="block text-sm sm:text-base font-semibold text-gray-900 mb-1.5 sm:mb-2">
+                        {t.form.otherWishes}
+                    </label>
+                    <textarea
+                        {...register('otherWishes')}
+                        rows={3}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 sm:py-2.5 text-sm sm:text-base"
+                    />
+                </div>
+
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 sm:mb-3">{t.form.importantInfo}</h2>
+                    <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-gray-800 leading-relaxed">
+                        <p className="font-medium">{t.form.importantInfo1}</p>
+                        <p className="font-medium">{t.form.importantInfo2}</p>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 sm:mb-3">{t.form.confirmation}</h2>
+                    <label className="flex items-start cursor-pointer">
+                        <input
+                            type="checkbox"
+                            {...register('termsConfirmed')}
+                            className={`mt-1 mr-2 sm:mr-3 ${errors.termsConfirmed ? 'border-red-500' : ''
+                                }`}
+                        />
+                        <span className={`text-sm sm:text-base font-medium ${errors.termsConfirmed ? 'text-red-600' : 'text-gray-900'
+                            }`}>
+                            {t.form.confirmText} <span className="text-red-600">*</span>
+                        </span>
+                    </label>
+                    {errors.termsConfirmed && touchedFields.termsConfirmed && (
+                        <p className="text-red-600 text-xs sm:text-sm font-medium mt-1 sm:mt-2">{errors.termsConfirmed.message}</p>
+                    )}
+                </div>
+
+                <div className="flex justify-end pb-4 sm:pb-6">
+                    <button
+                        type="button"
+                        onClick={async () => {
+                            const isValid = await form.trigger();
+                            if (isValid) {
+                                onPreview();
+                            }
+                        }}
+                        disabled={!formValid}
+                        title={formValid ? '' : 'Fyll i alla obligatoriska fält'}
+                        className={`px-6 sm:px-8 py-2.5 sm:py-3 rounded-lg font-semibold text-sm sm:text-base shadow-sm transition-colors ${formValid
+                            ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
+                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            }`}
+                    >
+                        {t.form.preview}
+                    </button>
+                </div>
+            </form>
+        </div>
+    );
+}
+
