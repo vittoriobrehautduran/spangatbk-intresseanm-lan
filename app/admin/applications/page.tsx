@@ -86,7 +86,7 @@ export default function AdminApplicationsPage() {
         aborted: 5,
       };
 
-      const sortedApplications = (data || []).sort((a, b) => {
+      const sortedApplications = (data || []).sort((a: Application, b: Application) => {
         const statusDiff = (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99);
         if (statusDiff !== 0) {
           return statusDiff;
