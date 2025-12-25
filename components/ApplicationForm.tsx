@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import type { ApplicationFormData } from '@/lib/validation';
 import type { Language } from '@/lib/translations';
@@ -19,6 +19,8 @@ export default function ApplicationForm({ form, language, onLanguageChange, onPr
     const { register, watch, setValue, formState: { errors, touchedFields, isValid } } = form;
     const [formValid, setFormValid] = useState(false);
     const [ageLevelError, setAgeLevelError] = useState<string | null>(null);
+    const [visibleTooltip, setVisibleTooltip] = useState<string | null>(null);
+    const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Trigger validation when form values change to update isValid state
     useEffect(() => {
@@ -49,6 +51,15 @@ export default function ApplicationForm({ form, language, onLanguageChange, onPr
             clearTimeout(timeoutId);
         };
     }, [form]);
+
+    // Cleanup tooltip timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (tooltipTimeoutRef.current) {
+                clearTimeout(tooltipTimeoutRef.current);
+            }
+        };
+    }, []);
 
     const sportType = watch('sportType');
     const studentPersonalNumber = watch('studentPersonalNumber');
@@ -156,6 +167,58 @@ export default function ApplicationForm({ form, language, onLanguageChange, onPr
         setAgeLevelError(null);
         return true;
     };
+
+    const handleTooltipClick = (tooltipId: string, e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Clear existing timeout
+        if (tooltipTimeoutRef.current) {
+            clearTimeout(tooltipTimeoutRef.current);
+        }
+        
+        // Toggle tooltip - if same tooltip is clicked, close it
+        if (visibleTooltip === tooltipId) {
+            setVisibleTooltip(null);
+        } else {
+            // Show tooltip
+            setVisibleTooltip(tooltipId);
+            
+            // Hide after 5 seconds
+            tooltipTimeoutRef.current = setTimeout(() => {
+                setVisibleTooltip(null);
+            }, 5000);
+        }
+    };
+
+    // Close tooltip when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as HTMLElement;
+            // Don't close if clicking on tooltip icon or tooltip content
+            if (target.closest('[data-tooltip-icon]') || target.closest('[data-tooltip-content]')) {
+                return;
+            }
+            
+            if (visibleTooltip) {
+                setVisibleTooltip(null);
+                if (tooltipTimeoutRef.current) {
+                    clearTimeout(tooltipTimeoutRef.current);
+                }
+            }
+        };
+
+        if (visibleTooltip) {
+            // Use a small delay to avoid immediate closure when opening
+            setTimeout(() => {
+                document.addEventListener('click', handleClickOutside);
+            }, 100);
+        }
+
+        return () => {
+            document.removeEventListener('click', handleClickOutside);
+        };
+    }, [visibleTooltip]);
 
     const handleLevelChange = (level: string, checked: boolean, type: 'tennis' | 'table_tennis') => {
         const currentLevels = watch(type === 'tennis' ? 'tennisLevels' : 'tableTennisLevels') || [];
@@ -273,7 +336,7 @@ export default function ApplicationForm({ form, language, onLanguageChange, onPr
     return (
         <div className="max-w-5xl mx-auto px-3 sm:px-4 py-3 sm:py-4 overflow-x-hidden">
             <form className="space-y-4 sm:space-y-5">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 relative overflow-visible">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 relative overflow-x-hidden overflow-y-visible">
                     {/* Language selector at top right corner */}
                     <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
                         <div className="flex gap-1.5">
@@ -355,12 +418,14 @@ export default function ApplicationForm({ form, language, onLanguageChange, onPr
                                             className="mr-3 sm:mr-4"
                                         />
                                         <span className="text-base sm:text-lg text-gray-900">{level.label}</span>
-                                        <div className="relative group ml-2 flex-shrink-0">
+                                        <div className="relative ml-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                                             <svg
+                                                data-tooltip-icon
                                                 className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 hover:text-gray-600 cursor-help"
                                                 fill="none"
                                                 stroke="currentColor"
                                                 viewBox="0 0 24 24"
+                                                onClick={(e) => handleTooltipClick(`tennis-${level.value}`, e)}
                                             >
                                                 <path
                                                     strokeLinecap="round"
@@ -369,7 +434,14 @@ export default function ApplicationForm({ form, language, onLanguageChange, onPr
                                                     d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                                                 />
                                             </svg>
-                                            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 sm:w-72 p-2.5 bg-gray-900 text-white text-xs sm:text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl max-w-[calc(100vw-2rem)]">
+                                            <div 
+                                                data-tooltip-content
+                                                className={`fixed left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 w-80 sm:w-96 p-4 bg-gray-900 text-white text-sm sm:text-base rounded-lg transition-opacity duration-300 z-50 shadow-xl ${
+                                                    visibleTooltip === `tennis-${level.value}` ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                                                }`}
+                                                style={{ maxWidth: 'calc(100vw - 2rem)' }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
                                                 {t.levelDescriptions.tennis[level.value]}
                                             </div>
                                         </div>
@@ -397,12 +469,14 @@ export default function ApplicationForm({ form, language, onLanguageChange, onPr
                                             className="mr-3 sm:mr-4"
                                         />
                                         <span className="text-base sm:text-lg text-gray-900">{level.label}</span>
-                                        <div className="relative group ml-2 flex-shrink-0">
+                                        <div className="relative ml-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                                             <svg
+                                                data-tooltip-icon
                                                 className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 hover:text-gray-600 cursor-help"
                                                 fill="none"
                                                 stroke="currentColor"
                                                 viewBox="0 0 24 24"
+                                                onClick={(e) => handleTooltipClick(`tabletennis-${level.value}`, e)}
                                             >
                                                 <path
                                                     strokeLinecap="round"
@@ -411,7 +485,14 @@ export default function ApplicationForm({ form, language, onLanguageChange, onPr
                                                     d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                                                 />
                                             </svg>
-                                            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 sm:w-72 p-2.5 bg-gray-900 text-white text-xs sm:text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl max-w-[calc(100vw-2rem)]">
+                                            <div 
+                                                data-tooltip-content
+                                                className={`fixed left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 w-80 sm:w-96 p-4 bg-gray-900 text-white text-sm sm:text-base rounded-lg transition-opacity duration-300 z-50 shadow-xl ${
+                                                    visibleTooltip === `tabletennis-${level.value}` ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                                                }`}
+                                                style={{ maxWidth: 'calc(100vw - 2rem)' }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
                                                 {t.levelDescriptions.tableTennis[level.value]}
                                             </div>
                                         </div>
