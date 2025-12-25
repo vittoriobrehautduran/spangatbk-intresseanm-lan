@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient();
 
-    const applicationData: Omit<Application, 'id' | 'created_at' | 'updated_at' | 'submitted_at' | 'status' | 'admin_notes'> = {
+    const applicationData: Omit<Application, 'id' | 'created_at' | 'updated_at'> = {
       status: 'new',
       sport_type: validatedData.sportType,
       tennis_levels: validatedData.tennisLevels || null,
@@ -38,8 +38,6 @@ export async function POST(request: NextRequest) {
       preferred_times: validatedData.preferredTimes || null,
       other_wishes: validatedData.otherWishes || null,
       admin_notes: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
       submitted_at: new Date().toISOString(),
     };
 
