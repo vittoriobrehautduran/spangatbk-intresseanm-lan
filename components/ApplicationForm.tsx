@@ -271,9 +271,9 @@ export default function ApplicationForm({ form, language, onLanguageChange, onPr
 
 
     return (
-        <div className="max-w-5xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
+        <div className="max-w-5xl mx-auto px-3 sm:px-4 py-3 sm:py-4 overflow-x-hidden">
             <form className="space-y-4 sm:space-y-5">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 relative">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 relative overflow-visible">
                     {/* Language selector at top right corner */}
                     <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
                         <div className="flex gap-1.5">
@@ -369,7 +369,7 @@ export default function ApplicationForm({ form, language, onLanguageChange, onPr
                                                     d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                                                 />
                                             </svg>
-                                            <div className="absolute left-0 bottom-full mb-2 w-56 sm:w-64 p-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
+                                            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 sm:w-72 p-2.5 bg-gray-900 text-white text-xs sm:text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl max-w-[calc(100vw-2rem)]">
                                                 {t.levelDescriptions.tennis[level.value]}
                                             </div>
                                         </div>
@@ -411,7 +411,7 @@ export default function ApplicationForm({ form, language, onLanguageChange, onPr
                                                     d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                                                 />
                                             </svg>
-                                            <div className="absolute left-0 bottom-full mb-2 w-56 sm:w-64 p-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
+                                            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 sm:w-72 p-2.5 bg-gray-900 text-white text-xs sm:text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl max-w-[calc(100vw-2rem)]">
                                                 {t.levelDescriptions.tableTennis[level.value]}
                                             </div>
                                         </div>
@@ -437,7 +437,7 @@ export default function ApplicationForm({ form, language, onLanguageChange, onPr
                     </div>
                 </div>
 
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 overflow-visible">
                     <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">{t.form.studentInfo}</h2>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5 mb-3 sm:mb-3.5">
