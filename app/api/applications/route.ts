@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { applicationFormSchema } from '@/lib/validation';
 import type { Application } from '@/types/database';
 
@@ -11,7 +11,16 @@ export async function POST(request: NextRequest) {
     
     const validatedData = applicationFormSchema.parse(body);
 
-    const supabase = await createClient();
+    // Check if environment variables are set
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('Missing Supabase environment variables');
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      );
+    }
+
+    const supabase = createServiceClient();
 
     // Calculate age from personal number (format: YYYYMMDD-XXXX)
     let calculatedAge: number | null = null;

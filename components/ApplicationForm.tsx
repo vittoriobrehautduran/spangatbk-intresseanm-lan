@@ -524,7 +524,7 @@ export default function ApplicationForm({ form, language, onLanguageChange, onPr
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5 mb-3 sm:mb-3.5">
                         <div>
                             <label className="block text-base sm:text-lg font-semibold text-gray-900 mb-1 sm:mb-1.5">
-                                {t.form.studentName} <span className="text-red-600">*</span>
+                                {t.form.studentFirstName} <span className="text-red-600">*</span>
                             </label>
                             <input
                                 type="text"
@@ -539,7 +539,7 @@ export default function ApplicationForm({ form, language, onLanguageChange, onPr
                         </div>
                         <div>
                             <label className="block text-base sm:text-lg font-semibold text-gray-900 mb-1 sm:mb-1.5">
-                                &nbsp;
+                                {t.form.studentLastName} <span className="text-red-600">*</span>
                             </label>
                             <input
                                 type="text"

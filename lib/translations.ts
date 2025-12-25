@@ -12,6 +12,8 @@ export interface Translations {
     writeInterest: string;
     studentInfo: string;
     studentName: string;
+    studentFirstName: string;
+    studentLastName: string;
     personalNumber: string;
     phone: string;
     address: string;
@@ -100,6 +102,8 @@ export const translations: Record<Language, Translations> = {
       writeInterest: 'Skriv här vad ni är intresserade av:',
       studentInfo: 'Elevinformation',
       studentName: 'Elevens för- och efternamn',
+      studentFirstName: 'Elevens förnamn',
+      studentLastName: 'Elevens efternamn',
       personalNumber: 'Personnummer (inklusive de 4 sista siffrorna)',
       phone: 'Telefonnummer',
       address: 'Adress',
@@ -214,6 +218,8 @@ export const translations: Record<Language, Translations> = {
       writeInterest: 'Write here what you are interested in:',
       studentInfo: 'Student information',
       studentName: "Student's first and last name",
+      studentFirstName: "Student's first name",
+      studentLastName: "Student's last name",
       personalNumber: 'Personal identification number (including the last 4 digits)',
       phone: 'Phone number',
       address: 'Address',
