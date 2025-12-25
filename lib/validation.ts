@@ -8,8 +8,8 @@ export const createApplicationFormSchema = (language: Language = 'sv') => {
 
   const preferredTimeSchema = z.object({
     day: z.string().min(1, t.form.required),
-    from: z.string().min(1, language === 'sv' ? 'Välj en timme (0-23)' : 'Select an hour (0-23)').regex(/^([0-1]?[0-9]|2[0-3])$/, language === 'sv' ? 'Välj en timme (0-23)' : 'Select an hour (0-23)'),
-    to: z.string().min(1, language === 'sv' ? 'Välj en timme (0-23)' : 'Select an hour (0-23)').regex(/^([0-1]?[0-9]|2[0-3])$/, language === 'sv' ? 'Välj en timme (0-23)' : 'Select an hour (0-23)'),
+    from: z.string().min(1, language === 'sv' ? 'Välj en timme (07-22)' : 'Select an hour (07-22)').regex(/^(0[7-9]|1[0-9]|2[0-2])$/, language === 'sv' ? 'Välj en timme (07-22)' : 'Select an hour (07-22)'),
+    to: z.string().min(1, language === 'sv' ? 'Välj en timme (07-22)' : 'Select an hour (07-22)').regex(/^(0[7-9]|1[0-9]|2[0-2])$/, language === 'sv' ? 'Välj en timme (07-22)' : 'Select an hour (07-22)'),
   });
 
   const guardianSchema = z.object({

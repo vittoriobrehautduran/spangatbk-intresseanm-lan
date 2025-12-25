@@ -116,10 +116,10 @@ export default function ApplicationForm({ form, language, onLanguageChange, onPr
         { key: 'sunday', label: t.form.sunday },
     ];
 
-    // Generate hours 0-23 for 24-hour format
-    const hours = Array.from({ length: 24 }, (_, i) => {
-        const hour = i.toString().padStart(2, '0');
-        return { value: hour, label: hour };
+    // Generate hours 07:00-22:00
+    const hours = Array.from({ length: 16 }, (_, i) => {
+        const hour = (i + 7).toString().padStart(2, '0');
+        return { value: hour, label: `${hour}:00` };
     });
 
     const tennisLevels = [

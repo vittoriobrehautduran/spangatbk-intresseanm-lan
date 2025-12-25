@@ -52,11 +52,23 @@ export default function FormPage() {
     form.clearErrors();
   }, [language, form]);
 
+  // Scroll to top when preview is shown
+  useEffect(() => {
+    if (showPreview) {
+      // Use setTimeout to ensure DOM has updated
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 100);
+    }
+  }, [showPreview]);
+
   const handlePreview = async () => {
     // Trigger validation on all fields before showing preview
     const isValid = await form.trigger();
     if (isValid) {
       setShowPreview(true);
+      // Scroll to top when showing preview
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
