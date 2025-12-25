@@ -1,4 +1,4 @@
-export type ApplicationStatus = 'new' | 'contacted' | 'placed' | 'rejected' | 'cancelled';
+export type ApplicationStatus = 'new' | 'contacted' | 'queued' | 'placed' | 'aborted';
 export type SportType = 'tennis' | 'table_tennis';
 
 export type TennisLevel = 

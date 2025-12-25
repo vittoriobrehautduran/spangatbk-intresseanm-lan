@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server';
 import { applicationFormSchema } from '@/lib/validation';
 import type { Application } from '@/types/database';
 
+export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();

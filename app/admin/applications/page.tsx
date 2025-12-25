@@ -60,8 +60,7 @@ export default function AdminApplicationsPage() {
       
       let query = supabase
         .from('applications')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*');
 
       if (statusFilter !== 'all') {
         query = query.eq('status', statusFilter);
@@ -78,7 +77,25 @@ export default function AdminApplicationsPage() {
         return;
       }
 
-      setApplications(data || []);
+      // Order applications: ny → kontaktad → köad → placerad → avbruten
+      const statusOrder: Record<ApplicationStatus, number> = {
+        new: 1,
+        contacted: 2,
+        queued: 3,
+        placed: 4,
+        aborted: 5,
+      };
+
+      const sortedApplications = (data || []).sort((a, b) => {
+        const statusDiff = (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99);
+        if (statusDiff !== 0) {
+          return statusDiff;
+        }
+        // If same status, sort by created_at descending (newest first)
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+
+      setApplications(sortedApplications);
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -187,9 +204,9 @@ export default function AdminApplicationsPage() {
                 <option value="all">Alla</option>
                 <option value="new">{t.status.new}</option>
                 <option value="contacted">{t.status.contacted}</option>
+                <option value="queued">{t.status.queued}</option>
                 <option value="placed">{t.status.placed}</option>
-                <option value="rejected">{t.status.rejected}</option>
-                <option value="cancelled">{t.status.cancelled}</option>
+                <option value="aborted">{t.status.aborted}</option>
               </select>
             </div>
 

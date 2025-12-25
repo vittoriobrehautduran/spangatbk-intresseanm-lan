@@ -149,9 +149,9 @@ När domänen är konfigurerad, skapa en QR-kod som pekar på:
 
 - `new` - Ny ansökan
 - `contacted` - Kontaktad
+- `queued` - Köad
 - `placed` - Placerad
-- `rejected` - Avslagen
-- `cancelled` - Inställd
+- `aborted` - Avbruten
 
 ## Säkerhet
 
