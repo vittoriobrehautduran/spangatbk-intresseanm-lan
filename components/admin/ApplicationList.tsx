@@ -75,10 +75,10 @@ export default function ApplicationList({ applications, onSelectApplication }: A
                         ? 'bg-blue-100 text-blue-800'
                         : application.status === 'contacted'
                         ? 'bg-yellow-100 text-yellow-800'
+                        : application.status === 'queued'
+                        ? 'bg-orange-100 text-orange-800'
                         : application.status === 'placed'
                         ? 'bg-green-100 text-green-800'
-                        : application.status === 'rejected'
-                        ? 'bg-red-100 text-red-800'
                         : 'bg-gray-100 text-gray-800'
                     }`}
                   >

@@ -176,9 +176,9 @@ export const translations: Record<Language, Translations> = {
     status: {
       new: 'Ny',
       contacted: 'Kontaktad',
+      queued: 'Köad',
       placed: 'Placerad',
-      rejected: 'Avslagen',
-      cancelled: 'Inställd',
+      aborted: 'Avbruten',
     },
   },
   en: {
@@ -274,9 +274,9 @@ export const translations: Record<Language, Translations> = {
     status: {
       new: 'New',
       contacted: 'Contacted',
+      queued: 'Queued',
       placed: 'Placed',
-      rejected: 'Rejected',
-      cancelled: 'Cancelled',
+      aborted: 'Aborted',
     },
   },
 };

@@ -79,9 +79,9 @@ export default function ApplicationDetail({
             >
               <option value="new">{t.status.new}</option>
               <option value="contacted">{t.status.contacted}</option>
+              <option value="queued">{t.status.queued}</option>
               <option value="placed">{t.status.placed}</option>
-              <option value="rejected">{t.status.rejected}</option>
-              <option value="cancelled">{t.status.cancelled}</option>
+              <option value="aborted">{t.status.aborted}</option>
             </select>
           </div>
         </div>
