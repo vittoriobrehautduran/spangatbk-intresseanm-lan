@@ -13,6 +13,27 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient();
 
+    // Calculate age from personal number (format: YYYYMMDD-XXXX)
+    let calculatedAge: number | null = null;
+    const personalNumber = validatedData.studentPersonalNumber.replace(/-/g, '');
+    if (personalNumber.length >= 8) {
+      const year = parseInt(personalNumber.substring(0, 4), 10);
+      const month = parseInt(personalNumber.substring(4, 6), 10);
+      const day = parseInt(personalNumber.substring(6, 8), 10);
+      
+      if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+        const birthDate = new Date(year, month - 1, day);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+        calculatedAge = age;
+      }
+    }
+
     const applicationData: Omit<Application, 'id' | 'created_at' | 'updated_at'> = {
       status: 'new',
       sport_type: validatedData.sportType,
@@ -25,7 +46,7 @@ export async function POST(request: NextRequest) {
       student_phone: validatedData.studentPhone,
       student_address: validatedData.studentAddress,
       student_email: validatedData.studentEmail,
-      student_age: validatedData.studentAge || null,
+      student_age: calculatedAge,
       has_guardian: validatedData.hasGuardian,
       guardian_1_name: validatedData.guardian1?.name || null,
       guardian_1_email: validatedData.guardian1?.email || null,

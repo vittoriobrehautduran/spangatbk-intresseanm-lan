@@ -30,6 +30,33 @@ export default function ApplicationPreview({
         onSubmit(data);
     };
 
+    // Calculate age from personal number (YYYYMMDD-XXXX format)
+    const calculateAgeFromPersonalNumber = (personalNumber: string): number | null => {
+        if (!personalNumber) return null;
+        // Remove dash and extract first 8 digits (YYYYMMDD)
+        const cleaned = personalNumber.replace(/-/g, '');
+        if (cleaned.length < 8) return null;
+
+        const year = parseInt(cleaned.substring(0, 4), 10);
+        const month = parseInt(cleaned.substring(4, 6), 10);
+        const day = parseInt(cleaned.substring(6, 8), 10);
+
+        if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+
+        const birthDate = new Date(year, month - 1, day);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+
+        return age;
+    };
+
+    const studentAge = calculateAgeFromPersonalNumber(data.studentPersonalNumber || '');
+
     const getSportLevels = () => {
         if (data.sportType === 'tennis' && data.tennisLevels) {
             return data.tennisLevels.map((level: string) => t.levels.tennis[level as keyof typeof t.levels.tennis]).join(', ');
@@ -100,9 +127,9 @@ export default function ApplicationPreview({
                             <p>
                                 <span className="font-semibold text-gray-900">{t.form.email}:</span> {data.studentEmail}
                             </p>
-                            {data.studentAge && (
+                            {studentAge !== null && (
                                 <p>
-                                    <span className="font-semibold text-gray-900">{language === 'sv' ? 'Ålder' : 'Age'}:</span> {data.studentAge}
+                                    <span className="font-semibold text-gray-900">{language === 'sv' ? 'Ålder' : 'Age'}:</span> {studentAge}
                                 </p>
                             )}
                         </div>
