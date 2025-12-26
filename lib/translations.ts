@@ -47,6 +47,7 @@ export interface Translations {
     submit: string;
     back: string;
     required: string;
+    optional: string;
     invalidEmail: string;
     invalidPhone: string;
     invalidPersonalNumber: string;
@@ -137,6 +138,7 @@ export const translations: Record<Language, Translations> = {
       submit: 'Skicka ansökan',
       back: 'Tillbaka',
       required: 'Detta fält är obligatoriskt',
+      optional: '(valfritt)',
       invalidEmail: 'Ogiltig e-postadress. Måste innehålla @',
       invalidPhone: 'Ogiltigt telefonnummer. Ange minst 7 siffror',
       invalidPersonalNumber: 'Ogiltigt personnummer. Ange 12 siffror (YYYYMMDD-XXXX)',
@@ -253,6 +255,7 @@ export const translations: Record<Language, Translations> = {
       submit: 'Submit application',
       back: 'Back',
       required: 'This field is required',
+      optional: '(optional)',
       invalidEmail: 'Invalid email address. Must contain @',
       invalidPhone: 'Invalid phone number. Enter at least 7 digits',
       invalidPersonalNumber: 'Invalid personal number. Enter 12 digits (YYYYMMDD-XXXX)',

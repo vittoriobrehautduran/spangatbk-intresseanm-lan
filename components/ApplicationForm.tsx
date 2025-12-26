@@ -280,10 +280,14 @@ export default function ApplicationForm({ form, language, onLanguageChange, onPr
     const handleTimeChange = (index: number, field: 'day' | 'from' | 'to', value: string) => {
         const current = preferredTimes || [];
         const updated = [...current];
+        // Ensure the index exists in the array
+        if (!updated[index]) {
+            updated[index] = { day: 'monday', from: '', to: '' };
+        }
         updated[index] = { ...updated[index], [field]: value };
-        // Filter out times that don't have both from and to filled
-        const filtered = updated.filter(time => time.from && time.to && time.day);
-        setValue('preferredTimes', filtered.length > 0 ? filtered : updated, { shouldValidate: true });
+        // Don't filter - let validation handle incomplete entries
+        // This allows users to add multiple days and fill them in any order
+        setValue('preferredTimes', updated, { shouldValidate: true });
     };
 
     // Auto-format personal number: YYYYMMDD-XXXX
@@ -507,7 +511,7 @@ export default function ApplicationForm({ form, language, onLanguageChange, onPr
 
                     <div className="mb-4 sm:mb-5">
                         <label className="block text-base sm:text-lg font-semibold text-gray-900 mb-1.5 sm:mb-2">
-                            {t.form.interestAreas}
+                            {t.form.interestAreas} <span className="text-gray-500 font-normal">{t.form.optional}</span>
                         </label>
                         <p className="text-base sm:text-lg text-gray-700 mb-2 sm:mb-2.5 font-medium">{t.form.writeInterest}</p>
                         <textarea
@@ -764,8 +768,10 @@ export default function ApplicationForm({ form, language, onLanguageChange, onPr
                     </div>
                 </div>
 
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
-                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">{t.form.preferredTimes}</h2>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6" id="preferred-times-section">
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
+                        {t.form.preferredTimes} <span className="text-red-600">*</span>
+                    </h2>
                     <p className="text-base sm:text-lg font-medium text-gray-700 mb-3 sm:mb-4">{t.form.preferredTimesNote}</p>
 
                     {preferredTimes.length === 0 ? (
@@ -934,7 +940,7 @@ export default function ApplicationForm({ form, language, onLanguageChange, onPr
 
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
                     <label className="block text-base sm:text-lg font-semibold text-gray-900 mb-1.5 sm:mb-2">
-                        {t.form.otherWishes}
+                        {t.form.otherWishes} <span className="text-gray-500 font-normal">{t.form.optional}</span>
                     </label>
                     <textarea
                         {...register('otherWishes')}
@@ -977,13 +983,69 @@ export default function ApplicationForm({ form, language, onLanguageChange, onPr
                             const isValid = await form.trigger();
                             if (isValid) {
                                 onPreview();
+                            } else {
+                                // Find first error field and scroll to it
+                                const errors = form.formState.errors;
+                                const errorFields = Object.keys(errors);
+                                
+                                if (errorFields.length > 0) {
+                                    const firstErrorField = errorFields[0];
+                                
+                                    // Special handling for preferredTimes error - scroll to the section
+                                    if (firstErrorField === 'preferredTimes') {
+                                        const preferredTimesSection = document.getElementById('preferred-times-section');
+                                        if (preferredTimesSection) {
+                                            preferredTimesSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                            // Try to focus the first select element in the section
+                                            setTimeout(() => {
+                                                const firstSelect = preferredTimesSection.querySelector('select');
+                                                if (firstSelect) {
+                                                    firstSelect.focus();
+                                                }
+                                            }, 300);
+                                            return;
+                                        }
+                                    }
+                                
+                                    // Try to find the input element by name attribute (React Hook Form sets this)
+                                    let inputElement: HTMLElement | null = document.querySelector(
+                                        `input[name="${firstErrorField}"], textarea[name="${firstErrorField}"], select[name="${firstErrorField}"]`
+                                    ) as HTMLElement;
+                                    
+                                    // If not found, try nested fields (e.g., guardian1.name)
+                                    if (!inputElement && firstErrorField.includes('.')) {
+                                        const parts = firstErrorField.split('.');
+                                        const nestedName = parts.join('.');
+                                        inputElement = document.querySelector(
+                                            `input[name="${nestedName}"], textarea[name="${nestedName}"], select[name="${nestedName}"]`
+                                        ) as HTMLElement;
+                                    }
+                                    
+                                    if (inputElement) {
+                                        // Scroll to the input element
+                                        inputElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                        // Focus the input for better UX
+                                        setTimeout(() => {
+                                            if (inputElement && 'focus' in inputElement) {
+                                                (inputElement as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement).focus();
+                                            }
+                                        }, 300);
+                                    } else {
+                                        // Fallback: scroll to top of form
+                                        const formElement = document.querySelector('form');
+                                        if (formElement) {
+                                            formElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                        } else {
+                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                        }
+                                    }
+                                }
                             }
                         }}
-                        disabled={!formValid}
-                        title={formValid ? '' : 'Fyll i alla obligatoriska fält'}
+                        title={formValid ? '' : (language === 'sv' ? 'Fyll i alla obligatoriska fält' : 'Fill in all required fields')}
                         className={`px-6 sm:px-8 py-2.5 sm:py-3 rounded-lg font-semibold text-base sm:text-lg shadow-sm transition-colors ${formValid
                             ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
-                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-gray-300 text-gray-500 cursor-pointer hover:bg-gray-400'
                             }`}
                     >
                         {t.form.preview}

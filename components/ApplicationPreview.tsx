@@ -209,13 +209,6 @@ export default function ApplicationPreview({
                             <p className="text-sm sm:text-base text-gray-700 leading-relaxed">{data.otherWishes}</p>
                         </div>
                     )}
-
-                    <div>
-                        <h2 className="font-bold text-base sm:text-lg text-gray-900 mb-1.5 sm:mb-2">{t.form.confirmation}</h2>
-                        <p className="text-sm sm:text-base text-gray-700 font-medium">
-                            {data.termsConfirmed ? t.form.confirmText : '-'}
-                        </p>
-                    </div>
                 </div>
             </div>
 
