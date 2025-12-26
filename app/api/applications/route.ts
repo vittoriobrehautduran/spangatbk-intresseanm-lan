@@ -2,11 +2,37 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { applicationFormSchema } from '@/lib/validation';
 import type { Application } from '@/types/database';
+import { checkIPRateLimit, recordIPRateLimit, getIPAddress } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   try {
+    // Extract IP address for rate limiting
+    const ipAddress = getIPAddress(request);
+    
+    // Check rate limits before processing
+    const rateLimitCheck = await checkIPRateLimit(ipAddress);
+    if (!rateLimitCheck.allowed) {
+      const retryAfter = rateLimitCheck.retryAfter || 3600;
+      return NextResponse.json(
+        { 
+          error: 'Too many requests',
+          message: 'You have exceeded the rate limit. Please try again later.',
+          retryAfter,
+        },
+        { 
+          status: 429,
+          headers: {
+            'Retry-After': retryAfter.toString(),
+            'X-RateLimit-Limit': '5',
+            'X-RateLimit-Remaining': rateLimitCheck.remaining.toString(),
+            'X-RateLimit-Reset': new Date(rateLimitCheck.resetTime).toISOString(),
+          },
+        }
+      );
+    }
+
     const body = await request.json();
     
     const validatedData = applicationFormSchema.parse(body);
@@ -82,6 +108,9 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Record successful request for rate limiting
+    await recordIPRateLimit(ipAddress);
 
     return NextResponse.json({ success: true, data }, { status: 201 });
   } catch (error: any) {
