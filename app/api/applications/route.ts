@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
           status: 429,
           headers: {
             'Retry-After': retryAfter.toString(),
-            'X-RateLimit-Limit': '5',
+            'X-RateLimit-Limit': '20',
             'X-RateLimit-Remaining': rateLimitCheck.remaining.toString(),
             'X-RateLimit-Reset': new Date(rateLimitCheck.resetTime).toISOString(),
           },

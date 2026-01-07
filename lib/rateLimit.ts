@@ -82,14 +82,14 @@ async function recordRateLimit(ipAddress: string): Promise<void> {
 }
 
 /**
- * Check IP-based rate limits (5 per hour, 15 per day)
+ * Check IP-based rate limits (20 per hour, 30 per day)
  * @param ipAddress - The IP address to check
  * @returns Rate limit check result
  */
 export async function checkIPRateLimit(ipAddress: string): Promise<RateLimitResult> {
-  const HOUR_LIMIT = 5;
+  const HOUR_LIMIT = 20;
   const HOUR_WINDOW = 3600; // 1 hour in seconds
-  const DAY_LIMIT = 15;
+  const DAY_LIMIT = 30;
   const DAY_WINDOW = 86400; // 24 hours in seconds
 
   // Check hourly limit
