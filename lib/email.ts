@@ -199,7 +199,12 @@ export async function sendGuardianConfirmationEmails(
     guardianEmails.push(application.guardian_2_email);
   }
 
-  if (guardianEmails.length === 0) {
+  // Remove guardian emails that match the student email to avoid duplicates
+  const uniqueGuardianEmails = guardianEmails.filter(
+    (email) => email.toLowerCase() !== application.student_email.toLowerCase()
+  );
+
+  if (uniqueGuardianEmails.length === 0) {
     return;
   }
 
@@ -294,8 +299,8 @@ Spånga TBK
 ${isSwedish ? 'Detta är ett automatiskt meddelande. Vänligen svara inte på detta e-postmeddelande.' : 'This is an automated message. Please do not reply to this email.'}
   `.trim();
 
-  // Send email to all guardians
-  for (const email of guardianEmails) {
+  // Send email to all unique guardian emails (excluding student email)
+  for (const email of uniqueGuardianEmails) {
     const command = new SendEmailCommand({
       Source: fromEmail,
       Destination: {
