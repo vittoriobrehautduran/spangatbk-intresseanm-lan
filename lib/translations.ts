@@ -76,16 +76,20 @@ export interface Translations {
     sport: string;
     date: string;
     actions: string;
-    view: string;
-    edit: string;
-    save: string;
-    cancel: string;
-    notes: string;
-    adminNotes: string;
-    studentName: string;
-    studentEmail: string;
-    studentPhone: string;
-    noApplications: string;
+      view: string;
+      edit: string;
+      save: string;
+      cancel: string;
+      delete: string;
+      deleteConfirm: string;
+      deleteConfirmDetail: string;
+      deleted: string;
+      notes: string;
+      adminNotes: string;
+      studentName: string;
+      studentEmail: string;
+      studentPhone: string;
+      noApplications: string;
   };
   status: Record<string, string>;
 }
@@ -193,6 +197,10 @@ export const translations: Record<Language, Translations> = {
       edit: 'Redigera',
       save: 'Spara',
       cancel: 'Avbryt',
+      delete: 'Ta bort',
+      deleteConfirm: 'Är du säker på att du vill ta bort denna ansökan?',
+      deleteConfirmDetail: 'Denna åtgärd kan inte ångras.',
+      deleted: 'Ansökan har tagits bort',
       notes: 'Anteckningar',
       adminNotes: 'Adminanteckningar',
       studentName: 'Namn',
@@ -310,6 +318,10 @@ export const translations: Record<Language, Translations> = {
       edit: 'Edit',
       save: 'Save',
       cancel: 'Cancel',
+      delete: 'Delete',
+      deleteConfirm: 'Are you sure you want to delete this application?',
+      deleteConfirmDetail: 'This action cannot be undone.',
+      deleted: 'Application has been deleted',
       notes: 'Notes',
       adminNotes: 'Admin notes',
       studentName: 'Name',

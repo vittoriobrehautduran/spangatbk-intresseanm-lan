@@ -9,6 +9,7 @@ interface ApplicationDetailProps {
   application: Application;
   onBack: () => void;
   onUpdateStatus: (id: string, status: ApplicationStatus, notes?: string) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
   onRefresh: () => Promise<void>;
 }
 
@@ -16,11 +17,14 @@ export default function ApplicationDetail({
   application,
   onBack,
   onUpdateStatus,
+  onDelete,
   onRefresh,
 }: ApplicationDetailProps) {
   const [status, setStatus] = useState<ApplicationStatus>(application.status);
   const [adminNotes, setAdminNotes] = useState(application.admin_notes || '');
   const [isSaving, setIsSaving] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const t = translations.sv;
 
   const handleSave = async () => {
@@ -32,6 +36,18 @@ export default function ApplicationDetail({
       console.error('Error saving:', error);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await onDelete(application.id);
+      onBack();
+    } catch (error) {
+      console.error('Error deleting:', error);
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -209,22 +225,56 @@ export default function ApplicationDetail({
           </div>
         </div>
 
-        <div className="mt-6 flex justify-end gap-4">
+        <div className="mt-6 flex justify-between items-center">
           <button
-            onClick={onBack}
-            className="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-400"
+            onClick={() => setShowDeleteConfirm(true)}
+            disabled={isDeleting}
+            className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {t.admin.cancel}
+            {t.admin.delete}
           </button>
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSaving ? 'Sparar...' : t.admin.save}
-          </button>
+          <div className="flex gap-4">
+            <button
+              onClick={onBack}
+              className="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-400"
+            >
+              {t.admin.cancel}
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSaving ? 'Sparar...' : t.admin.save}
+            </button>
+          </div>
         </div>
       </div>
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-bold mb-4">{t.admin.deleteConfirm}</h3>
+            <p className="text-gray-600 mb-6">{t.admin.deleteConfirmDetail}</p>
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={isDeleting}
+                className="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-400 disabled:opacity-50"
+              >
+                {t.admin.cancel}
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isDeleting ? 'Tar bort...' : t.admin.delete}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

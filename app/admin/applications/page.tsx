@@ -140,6 +140,49 @@ export default function AdminApplicationsPage() {
     }
   };
 
+  const handleDelete = async (id: string) => {
+    try {
+      // Get auth token for API request
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        alert('Du är inte inloggad. Logga in igen.');
+        router.push('/admin/login');
+        return;
+      }
+
+      // Call API endpoint to delete
+      const response = await fetch(`/api/applications?id=${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Error deleting application:', errorData);
+        alert(errorData.error || 'Ett fel uppstod när ansökan skulle tas bort.');
+        throw new Error(errorData.error || 'Failed to delete');
+      }
+
+      // If deleted application was selected, go back to list
+      if (selectedApplication?.id === id) {
+        setSelectedApplication(null);
+      }
+
+      // Remove from local state immediately for better UX
+      setApplications(applications.filter((app) => app.id !== id));
+
+      // Reload applications to ensure sync
+      await loadApplications();
+    } catch (error) {
+      console.error('Error:', error);
+      throw error;
+    }
+  };
+
   const filteredApplications = applications.filter((app) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
@@ -157,6 +200,7 @@ export default function AdminApplicationsPage() {
         application={selectedApplication}
         onBack={() => setSelectedApplication(null)}
         onUpdateStatus={handleUpdateStatus}
+        onDelete={handleDelete}
         onRefresh={loadApplications}
       />
     );

@@ -9,6 +9,7 @@ Mobilvänlig webbapp för intresseanmälan till tennis och bordtennis. Användar
 - **Databas**: Supabase (PostgreSQL)
 - **Hosting**: Netlify
 - **Autentisering**: Supabase Auth
+- **E-post**: AWS SES (Simple Email Service)
 
 ## Setup
 
@@ -32,6 +33,13 @@ npm install
 NEXT_PUBLIC_SUPABASE_URL=din_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=din_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=din_supabase_service_role_key
+
+# AWS SES konfiguration (valfritt - e-post fungerar utan dessa)
+SES_REGION=eu-north-1
+SES_ACCESS_KEY=din_aws_access_key
+SES_SECRET_ACCESS_KEY=din_aws_secret_key
+AWS_SES_FROM_EMAIL=noreply@din-domän.se
+AWS_SES_CLUB_EMAIL=kansli@din-domän.se
 ```
 
 ### 3. Skapa databas
@@ -85,6 +93,11 @@ npm run build
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
+   - `SES_REGION` (t.ex. `eu-north-1`)
+   - `SES_ACCESS_KEY`
+   - `SES_SECRET_ACCESS_KEY`
+   - `AWS_SES_FROM_EMAIL` (verifierad e-postadress i AWS SES)
+   - `AWS_SES_CLUB_EMAIL` (e-postadress där notiser om nya ansökningar ska skickas)
 
 5. Build settings:
    - Build command: `npm run build`
@@ -135,6 +148,7 @@ När domänen är konfigurerad, skapa en QR-kod som pekar på:
 - Målsmansinformation (obligatorisk för <18 år, valfri för 18+)
 - Önskade träningsdagar/tider
 - Samtycke för gruppfoto
+- Automatisk e-postbekräftelse vid inskickning (AWS SES)
 
 ### Adminpanel
 - Inloggning via Supabase Auth
@@ -160,10 +174,22 @@ När domänen är konfigurerad, skapa en QR-kod som pekar på:
 - Admin endpoints: kräver autentisering
 - HTTPS endast i produktion
 
+## AWS SES Setup
+
+För att aktivera e-postbekräftelser:
+
+1. Skapa ett AWS-konto och aktivera SES
+2. Verifiera din avsändaradress (From email) i AWS SES Console
+3. Om du är i "Sandbox mode", verifiera även mottagaradresser för testning
+4. Skapa IAM-användare med SES-send permissions
+5. Lägg till environment variables (se ovan)
+
+**Detaljerad setup-guide:** Se `AWS-SES-SETUP.md` för steg-för-steg instruktioner.
+
+**Obs:** Om AWS SES inte är konfigurerat, kommer ansökningar fortfarande att sparas men inga e-postmeddelanden skickas.
+
 ## Framtida funktioner (inte implementerade än)
 
-- E-postbekräftelse till användare (AWS SES)
-- E-postnotis till kansli (AWS SES)
 - Export till CSV/Excel
 - Statistik/dashboard
 - Bulk-åtgärder

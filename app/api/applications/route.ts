@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
+import { createClient } from '@/lib/supabase/server';
 import { applicationFormSchema } from '@/lib/validation';
 import type { Application } from '@/types/database';
 import { checkIPRateLimit, recordIPRateLimit, getIPAddress } from '@/lib/rateLimit';
+import { sendConfirmationEmail, sendGuardianConfirmationEmails, sendClubNotificationEmail } from '@/lib/email';
 
 export const runtime = 'nodejs';
 
@@ -112,6 +114,25 @@ export async function POST(request: NextRequest) {
     // Record successful request for rate limiting
     await recordIPRateLimit(ipAddress);
 
+    // Send confirmation emails (non-blocking - don't fail request if email fails)
+    // Default to Swedish for now - can be enhanced later to detect language from form
+    try {
+      // Send confirmation to student
+      await sendConfirmationEmail(data, 'sv');
+      
+      // Send emails to guardians if they exist
+      if (data.has_guardian) {
+        await sendGuardianConfirmationEmails(data, 'sv');
+      }
+
+      // Send notification to tennis club with all form details
+      await sendClubNotificationEmail(data);
+    } catch (emailError) {
+      // Log email error but don't fail the request
+      // Application was successfully saved, email is just a notification
+      console.error('Email sending failed (application was saved):', emailError);
+    }
+
     return NextResponse.json({ success: true, data }, { status: 201 });
   } catch (error: any) {
     console.error('Validation or server error:', error);
@@ -123,6 +144,70 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    return NextResponse.json(
+      { error: 'Internal server error', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+// Delete application (admin only)
+export async function DELETE(request: NextRequest) {
+  try {
+    // Get authenticated user session from cookies
+    const supabase = await createClient();
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+    if (sessionError || !session) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Please log in' },
+        { status: 401 }
+      );
+    }
+
+    // Check if user is admin using service client to bypass RLS
+    const serviceClient = createServiceClient();
+    const { data: adminUser, error: adminError } = await serviceClient
+      .from('admin_users')
+      .select('id')
+      .eq('id', session.user.id)
+      .single();
+
+    if (adminError || !adminUser) {
+      return NextResponse.json(
+        { error: 'Forbidden - Admin access required' },
+        { status: 403 }
+      );
+    }
+
+    // Get application ID from query parameters
+    const { searchParams } = new URL(request.url);
+    const applicationId = searchParams.get('id');
+
+    if (!applicationId) {
+      return NextResponse.json(
+        { error: 'Application ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Use service client to delete (bypasses RLS)
+    const { error: deleteError } = await serviceClient
+      .from('applications')
+      .delete()
+      .eq('id', applicationId);
+
+    if (deleteError) {
+      console.error('Error deleting application:', deleteError);
+      return NextResponse.json(
+        { error: 'Failed to delete application', details: deleteError.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (error: any) {
+    console.error('Error in DELETE handler:', error);
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
       { status: 500 }
