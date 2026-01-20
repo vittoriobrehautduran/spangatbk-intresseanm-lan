@@ -47,8 +47,16 @@ export const createApplicationFormSchema = (language: Language = 'sv') => {
       studentPhone: z.string().regex(phoneRegex, t.form.invalidPhone).min(7, t.form.invalidPhone),
       studentAddress: z
         .string()
-        .min(5, t.form.required)
+        .min(1, t.form.required)
         .regex(addressRegex, language === 'sv' ? 'Ogiltig adress' : 'Invalid address'),
+      studentPostalCode: z
+        .string()
+        .min(1, t.form.required)
+        .regex(/^\d{3}\s\d{2}$/, language === 'sv' ? 'Postnummer måste vara i formatet XXX XX (t.ex. 163 70)' : 'Postal code must be in format XXX XX (e.g. 163 70)'),
+      studentCity: z
+        .string()
+        .min(1, t.form.required)
+        .regex(/^[a-zA-Z\s\-åäöÅÄÖ]+$/, language === 'sv' ? 'Ogiltig ort' : 'Invalid city'),
       studentEmail: z.string().email(t.form.invalidEmail),
       hasGuardian: z.boolean(),
       guardian1: guardianSchema.optional(),
@@ -61,6 +69,7 @@ export const createApplicationFormSchema = (language: Language = 'sv') => {
       }),
       preferredTimes: z.array(preferredTimeSchema).min(1, t.form.atLeastOneTime),
       otherWishes: z.string().optional(),
+      courtTimeSuggestion: z.string().optional(),
     })
     .refine(
       (data) => {

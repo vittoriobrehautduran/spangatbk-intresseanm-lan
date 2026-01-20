@@ -8,6 +8,13 @@ interface RateLimitResult {
 }
 
 /**
+ * Check if Supabase is configured
+ */
+function isSupabaseConfigured(): boolean {
+  return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
+/**
  * Check if an IP address is within rate limits
  * @param ipAddress - The IP address to check
  * @param limit - Maximum number of requests allowed
@@ -19,6 +26,16 @@ async function checkRateLimitWindow(
   limit: number,
   windowSeconds: number
 ): Promise<RateLimitResult> {
+  // If Supabase is not configured, allow all requests
+  if (!isSupabaseConfigured()) {
+    const now = new Date();
+    return {
+      allowed: true,
+      remaining: limit,
+      resetTime: now.getTime() + windowSeconds * 1000,
+    };
+  }
+
   const supabase = createServiceClient();
   const now = new Date();
   const windowStart = new Date(now.getTime() - windowSeconds * 1000);
@@ -65,6 +82,11 @@ async function checkRateLimitWindow(
  * @param ipAddress - The IP address to record
  */
 async function recordRateLimit(ipAddress: string): Promise<void> {
+  // If Supabase is not configured, skip recording
+  if (!isSupabaseConfigured()) {
+    return;
+  }
+
   const supabase = createServiceClient();
 
   const { error } = await supabase

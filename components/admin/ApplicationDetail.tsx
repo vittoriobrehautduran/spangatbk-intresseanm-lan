@@ -137,6 +137,12 @@ export default function ApplicationDetail({
                 <strong>Adress:</strong> {application.student_address}
               </p>
               <p>
+                <strong>Postnummer:</strong> {application.student_postal_code}
+              </p>
+              <p>
+                <strong>Ort:</strong> {application.student_city}
+              </p>
+              <p>
                 <strong>E-post:</strong> {application.student_email}
               </p>
               {application.student_age && (
@@ -203,6 +209,13 @@ export default function ApplicationDetail({
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {application.court_time_suggestion && (
+            <div>
+              <h2 className="font-semibold text-lg mb-2">{t.form.courtTimeSuggestion}</h2>
+              <p className="text-gray-700">{application.court_time_suggestion}</p>
             </div>
           )}
 

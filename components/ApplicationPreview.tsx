@@ -125,6 +125,12 @@ export default function ApplicationPreview({
                                 <span className="font-semibold text-gray-900">{t.form.address}:</span> {data.studentAddress}
                             </p>
                             <p>
+                                <span className="font-semibold text-gray-900">{t.form.postalCode}:</span> {data.studentPostalCode}
+                            </p>
+                            <p>
+                                <span className="font-semibold text-gray-900">{t.form.city}:</span> {data.studentCity}
+                            </p>
+                            <p>
                                 <span className="font-semibold text-gray-900">{t.form.email}:</span> {data.studentEmail}
                             </p>
                             {studentAge !== null && (
@@ -200,6 +206,13 @@ export default function ApplicationPreview({
                                     );
                                 })}
                             </div>
+                        </div>
+                    )}
+
+                    {data.courtTimeSuggestion && (
+                        <div>
+                            <h2 className="font-bold text-base sm:text-lg text-gray-900 mb-1.5 sm:mb-2">{t.form.courtTimeSuggestion}</h2>
+                            <p className="text-sm sm:text-base text-gray-700 leading-relaxed">{data.courtTimeSuggestion}</p>
                         </div>
                     )}
 

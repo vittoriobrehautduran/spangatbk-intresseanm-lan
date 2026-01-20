@@ -32,6 +32,8 @@ export interface Application {
   student_personal_number: string;
   student_phone: string;
   student_address: string;
+  student_postal_code: string;
+  student_city: string;
   student_email: string;
   student_age: number | null;
   has_guardian: boolean;
@@ -45,6 +47,7 @@ export interface Application {
   terms_confirmed: boolean;
   preferred_times: PreferredTime[] | null;
   other_wishes: string | null;
+  court_time_suggestion: string | null;
   admin_notes: string | null;
   created_at: string;
   updated_at: string;

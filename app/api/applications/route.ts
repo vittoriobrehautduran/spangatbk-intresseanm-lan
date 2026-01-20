@@ -10,45 +10,42 @@ export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if Supabase is configured (used for both rate limiting and database operations)
+    const supabaseConfigured = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+    
     // Extract IP address for rate limiting
     const ipAddress = getIPAddress(request);
     
-    // Check rate limits before processing
-    const rateLimitCheck = await checkIPRateLimit(ipAddress);
-    if (!rateLimitCheck.allowed) {
-      const retryAfter = rateLimitCheck.retryAfter || 3600;
-      return NextResponse.json(
-        { 
-          error: 'Too many requests',
-          message: 'You have exceeded the rate limit. Please try again later.',
-          retryAfter,
-        },
-        { 
-          status: 429,
-          headers: {
-            'Retry-After': retryAfter.toString(),
-            'X-RateLimit-Limit': '20',
-            'X-RateLimit-Remaining': rateLimitCheck.remaining.toString(),
-            'X-RateLimit-Reset': new Date(rateLimitCheck.resetTime).toISOString(),
+    // Check rate limits before processing (only if Supabase is configured)
+    if (supabaseConfigured) {
+      const rateLimitCheck = await checkIPRateLimit(ipAddress);
+      if (!rateLimitCheck.allowed) {
+        const retryAfter = rateLimitCheck.retryAfter || 3600;
+        return NextResponse.json(
+          { 
+            error: 'Too many requests',
+            message: 'You have exceeded the rate limit. Please try again later.',
+            retryAfter,
           },
-        }
-      );
+          { 
+            status: 429,
+            headers: {
+              'Retry-After': retryAfter.toString(),
+              'X-RateLimit-Limit': '20',
+              'X-RateLimit-Remaining': rateLimitCheck.remaining.toString(),
+              'X-RateLimit-Reset': new Date(rateLimitCheck.resetTime).toISOString(),
+            },
+          }
+        );
+      }
     }
 
     const body = await request.json();
     
     const validatedData = applicationFormSchema.parse(body);
 
-    // Check if environment variables are set
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.error('Missing Supabase environment variables');
-      return NextResponse.json(
-        { error: 'Server configuration error' },
-        { status: 500 }
-      );
-    }
-
-    const supabase = createServiceClient();
+    // Create Supabase client if configured
+    const supabase = supabaseConfigured ? createServiceClient() : null;
 
     // Calculate age from personal number (format: YYYYMMDD-XXXX)
     let calculatedAge: number | null = null;
@@ -82,6 +79,8 @@ export async function POST(request: NextRequest) {
       student_personal_number: validatedData.studentPersonalNumber,
       student_phone: validatedData.studentPhone,
       student_address: validatedData.studentAddress,
+      student_postal_code: validatedData.studentPostalCode,
+      student_city: validatedData.studentCity,
       student_email: validatedData.studentEmail,
       student_age: calculatedAge,
       has_guardian: validatedData.hasGuardian,
@@ -95,45 +94,84 @@ export async function POST(request: NextRequest) {
       terms_confirmed: validatedData.termsConfirmed,
       preferred_times: validatedData.preferredTimes || null,
       other_wishes: validatedData.otherWishes || null,
+      court_time_suggestion: validatedData.courtTimeSuggestion || null,
     };
 
-    const { data, error } = await supabase
-      .from('applications')
-      .insert([applicationData])
-      .select()
-      .single();
+    // Create Application object for email sending (with defaults if DB fails)
+    const now = new Date().toISOString();
+    const applicationForEmail: Application = {
+      id: 'temp-' + Date.now(),
+      ...applicationData,
+      created_at: now,
+      updated_at: now,
+      submitted_at: now,
+      admin_notes: null,
+    };
 
-    if (error) {
-      console.error('Supabase error:', error);
-      return NextResponse.json(
-        { error: 'Failed to save application', details: error.message },
-        { status: 500 }
-      );
+    let dbSaveSuccess = false;
+    let savedApplication: Application | null = null;
+    let dbError: Error | null = null;
+
+    // Try to save to database (only if Supabase is configured)
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('applications')
+        .insert([applicationData])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase error:', error);
+        dbError = error;
+        // Don't return yet - we'll send emails anyway
+      } else {
+        dbSaveSuccess = true;
+        savedApplication = data;
+        // Record successful request for rate limiting only if DB save succeeded
+        await recordIPRateLimit(ipAddress);
+      }
+    } else {
+      console.warn('Supabase not configured - skipping database save, but sending emails');
     }
 
-    // Record successful request for rate limiting
-    await recordIPRateLimit(ipAddress);
-
-    // Send confirmation emails (non-blocking - don't fail request if email fails)
-    // Default to Swedish for now - can be enhanced later to detect language from form
+    // Send confirmation emails regardless of database success/failure
+    // Use saved application data if available, otherwise use prepared data
+    const emailApplication = savedApplication || applicationForEmail;
+    
     try {
       // Send confirmation to student
-      await sendConfirmationEmail(data, 'sv');
+      await sendConfirmationEmail(emailApplication, 'sv');
       
       // Send emails to guardians if they exist
-      if (data.has_guardian) {
-        await sendGuardianConfirmationEmails(data, 'sv');
+      if (emailApplication.has_guardian) {
+        await sendGuardianConfirmationEmails(emailApplication, 'sv');
       }
 
       // Send notification to tennis club with all form details
-      await sendClubNotificationEmail(data);
+      await sendClubNotificationEmail(emailApplication);
     } catch (emailError) {
       // Log email error but don't fail the request
-      // Application was successfully saved, email is just a notification
-      console.error('Email sending failed (application was saved):', emailError);
+      console.error('Email sending failed:', emailError);
     }
 
-    return NextResponse.json({ success: true, data }, { status: 201 });
+    // Return response based on database save result
+    if (!dbSaveSuccess) {
+      const errorMessage = !supabaseConfigured
+        ? 'Database not configured - application received and emails sent'
+        : 'Failed to save application to database - emails have been sent';
+      
+      return NextResponse.json(
+        { 
+          error: !supabaseConfigured ? 'Database not configured' : 'Failed to save application to database',
+          details: dbError?.message || null,
+          message: errorMessage,
+          emailsSent: true,
+        },
+        { status: supabaseConfigured ? 500 : 201 }
+      );
+    }
+
+    return NextResponse.json({ success: true, data: savedApplication }, { status: 201 });
   } catch (error: any) {
     console.error('Validation or server error:', error);
     

@@ -15,9 +15,11 @@ export interface Translations {
     studentFirstName: string;
     studentLastName: string;
     personalNumber: string;
-    phone: string;
-    address: string;
-    email: string;
+      phone: string;
+      address: string;
+      postalCode: string;
+      city: string;
+      email: string;
     guardianInfo: string;
     guardianInfoNote: string;
     guardianName: string;
@@ -38,6 +40,7 @@ export interface Translations {
     from: string;
     to: string;
     otherWishes: string;
+    courtTimeSuggestion: string;
     importantInfo: string;
     importantInfo1: string;
     importantInfo2: string;
@@ -112,6 +115,8 @@ export const translations: Record<Language, Translations> = {
       personalNumber: 'Personnummer (inklusive de 4 sista siffrorna)',
       phone: 'Telefonnummer',
       address: 'Adress',
+      postalCode: 'Postnummer',
+      city: 'Ort',
       email: 'E-post',
       guardianInfo: 'Målsmans information',
       guardianInfoNote: 'om eleven är under 18 år',
@@ -133,6 +138,7 @@ export const translations: Record<Language, Translations> = {
       from: 'Från klockan',
       to: 'till klockan',
       otherWishes: 'Övriga önskemål',
+      courtTimeSuggestion: 'Har fått förslag på tid och bana av någon på Spånga TBK',
       importantInfo: 'Viktig information',
       importantInfo1: 'Vid antagning till tennis- eller bordtennisskolan krävs medlemskap i Spånga TBK samt att man följer klubbens trivselregler och stadgar.',
       importantInfo2: 'Observera: Uppsägning av plats måste ske skriftligen en månad före terminsslut; annars förlängs platsen automatiskt med en ny termin. Om uppsägning sker efter detta tillkommer en straffavgift på 1500 kr.',
@@ -233,6 +239,8 @@ export const translations: Record<Language, Translations> = {
       personalNumber: 'Personal identification number (including the last 4 digits)',
       phone: 'Phone number',
       address: 'Address',
+      postalCode: 'Postal code',
+      city: 'City',
       email: 'Email',
       guardianInfo: "Guardian's information",
       guardianInfoNote: 'if the student is under 18 years old',
@@ -254,6 +262,7 @@ export const translations: Record<Language, Translations> = {
       from: 'From',
       to: 'to',
       otherWishes: 'Other wishes',
+      courtTimeSuggestion: 'Have received suggestions for time and court from someone at Spånga TBK',
       importantInfo: 'Important information',
       importantInfo1: 'Membership in Spånga TBK and adherence to club rules are required for admission to the tennis or table tennis school.',
       importantInfo2: 'Cancellation of a spot must be in writing one month before the term ends, otherwise the spot is automatically extended, and late cancellation incurs a 1500 SEK penalty fee.',

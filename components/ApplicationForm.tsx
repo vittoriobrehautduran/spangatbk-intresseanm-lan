@@ -336,6 +336,19 @@ export default function ApplicationForm({ form, language, onLanguageChange, onPr
         setValue(field as any, cleaned, { shouldValidate: true });
     };
 
+    // Format postal code to XXX XX format (Swedish postal code format)
+    const handlePostalCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value.replace(/\D/g, ''); // Remove all non-digits
+        let formatted = value;
+        
+        // Add space after 3 digits
+        if (value.length > 3) {
+            formatted = value.substring(0, 3) + ' ' + value.substring(3, 5);
+        }
+        
+        setValue('studentPostalCode', formatted, { shouldValidate: true });
+    };
+
 
     return (
         <div className="max-w-5xl mx-auto px-3 sm:px-4 py-3 sm:py-4 overflow-x-hidden">
@@ -594,19 +607,59 @@ export default function ApplicationForm({ form, language, onLanguageChange, onPr
                     </div>
 
                     <div className="mb-3 sm:mb-3.5">
-                        <label className="block text-base sm:text-lg font-semibold text-gray-900 mb-1 sm:mb-1.5">
-                            {t.form.address} <span className="text-red-600">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            {...register('studentAddress')}
-                            placeholder={language === 'sv' ? 'Gatunamn 123, Postnummer Stad' : 'Street Name 123, Postal Code City'}
-                            className={`w-full border rounded-md px-3 py-2 sm:py-2.5 text-base sm:text-lg ${errors.studentAddress ? 'border-red-500' : 'border-gray-300'
-                                }`}
-                        />
-                        {errors.studentAddress && touchedFields.studentAddress && (
-                            <p className="text-red-600 text-base sm:text-lg font-medium mt-1">{errors.studentAddress.message}</p>
-                        )}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                            <div>
+                                <label className="block text-base sm:text-lg font-semibold text-gray-900 mb-1 sm:mb-1.5">
+                                    {t.form.address} <span className="text-red-600">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    {...register('studentAddress')}
+                                    placeholder={language === 'sv' ? 'Gatunamn 123' : 'Street Name 123'}
+                                    className={`w-full border rounded-md px-3 py-2 sm:py-2.5 text-base sm:text-lg ${errors.studentAddress ? 'border-red-500' : 'border-gray-300'
+                                        }`}
+                                />
+                                {errors.studentAddress && touchedFields.studentAddress && (
+                                    <p className="text-red-600 text-sm sm:text-base font-medium mt-1">{errors.studentAddress.message}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-base sm:text-lg font-semibold text-gray-900 mb-1 sm:mb-1.5">
+                                    {t.form.postalCode} <span className="text-red-600">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    {...register('studentPostalCode', {
+                                        onChange: (e) => handlePostalCodeChange(e),
+                                    })}
+                                    placeholder={language === 'sv' ? '163 70' : '163 70'}
+                                    maxLength={6}
+                                    onBlur={() => form.trigger('studentPostalCode')}
+                                    className={`w-full border rounded-md px-3 py-2 sm:py-2.5 text-base sm:text-lg ${errors.studentPostalCode ? 'border-red-500' : 'border-gray-300'
+                                        }`}
+                                />
+                                {errors.studentPostalCode && touchedFields.studentPostalCode && (
+                                    <p className="text-red-600 text-sm sm:text-base font-medium mt-1">{errors.studentPostalCode.message}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-base sm:text-lg font-semibold text-gray-900 mb-1 sm:mb-1.5">
+                                    {t.form.city} <span className="text-red-600">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    {...register('studentCity')}
+                                    placeholder={language === 'sv' ? 'Stad' : 'City'}
+                                    className={`w-full border rounded-md px-3 py-2 sm:py-2.5 text-base sm:text-lg ${errors.studentCity ? 'border-red-500' : 'border-gray-300'
+                                        }`}
+                                />
+                                {errors.studentCity && touchedFields.studentCity && (
+                                    <p className="text-red-600 text-sm sm:text-base font-medium mt-1">{errors.studentCity.message}</p>
+                                )}
+                            </div>
+                        </div>
                     </div>
 
                     <div className="mb-3 sm:mb-3.5">
@@ -936,6 +989,18 @@ export default function ApplicationForm({ form, language, onLanguageChange, onPr
                     {errors.preferredTimes && touchedFields.preferredTimes && preferredTimes.length === 0 && (
                         <p className="text-red-600 text-base sm:text-lg font-medium mt-2">{errors.preferredTimes.message}</p>
                     )}
+                </div>
+
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                    <label className="block text-base sm:text-lg font-semibold text-gray-900 mb-1.5 sm:mb-2">
+                        {t.form.courtTimeSuggestion} <span className="text-gray-500 font-normal">{t.form.optional}</span>
+                    </label>
+                    <textarea
+                        {...register('courtTimeSuggestion')}
+                        rows={3}
+                        placeholder={language === 'sv' ? 'Beskriv gärna vem som gav förslaget och vilken tid/bana...' : 'Please describe who gave the suggestion and which time/court...'}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 sm:py-2.5 text-base sm:text-lg"
+                    />
                 </div>
 
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">

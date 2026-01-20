@@ -33,6 +33,8 @@ export default function FormPage() {
       studentPersonalNumber: '',
       studentPhone: '',
       studentAddress: '',
+      studentPostalCode: '',
+      studentCity: '',
       studentEmail: '',
       hasGuardian: false,
       guardian1: undefined,
@@ -41,6 +43,7 @@ export default function FormPage() {
       termsConfirmed: false,
       preferredTimes: [{ day: 'monday', from: '', to: '' }],
       otherWishes: '',
+      courtTimeSuggestion: '',
     },
   });
 

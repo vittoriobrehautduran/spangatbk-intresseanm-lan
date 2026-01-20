@@ -501,6 +501,14 @@ function buildClubNotificationEmailHtml(application: Application): string {
         <span class="info-label">Adress:</span>
         <span class="info-value">${application.student_address}</span>
       </div>
+      <div class="info-row">
+        <span class="info-label">Postnummer:</span>
+        <span class="info-value">${application.student_postal_code || '-'}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Ort:</span>
+        <span class="info-value">${application.student_city || '-'}</span>
+      </div>
     </div>
 
     ${application.has_guardian ? `
@@ -541,6 +549,13 @@ function buildClubNotificationEmailHtml(application: Application): string {
       <div class="section-title">Önskade träningsdagar och tider</div>
       <div class="info-value" style="margin-top: 8px;">${preferredTimes}</div>
     </div>
+
+    ${application.court_time_suggestion ? `
+    <div class="info-section">
+      <div class="section-title">Har fått förslag på tid och bana av någon på Spånga TBK</div>
+      <div class="info-value" style="margin-top: 8px;">${application.court_time_suggestion}</div>
+    </div>
+    ` : ''}
 
     ${application.other_wishes ? `
     <div class="info-section">
@@ -626,6 +641,8 @@ Personnummer: ${application.student_personal_number}
 Telefon: ${application.student_phone}
 E-post: ${application.student_email}
 Adress: ${application.student_address}
+Postnummer: ${application.student_postal_code || '-'}
+Ort: ${application.student_city || '-'}
 
 ${application.has_guardian ? `
 MÅLSMANSINFORMATION
@@ -643,6 +660,11 @@ Målsman 2 - Telefon: ${application.guardian_2_phone || '-'}
 
 ÖNSKADE TRÄNINGSDAGAR OCH TIDER
 ${preferredTimesText}
+
+${application.court_time_suggestion ? `
+HAR FÅTT FÖRSLAG PÅ TID OCH BANA AV NÅGON PÅ SPÅNGA TBK
+${application.court_time_suggestion}
+` : ''}
 
 ${application.other_wishes ? `
 ÖVRIGA ÖNSKEMÅL
