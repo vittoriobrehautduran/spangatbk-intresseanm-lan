@@ -12,6 +12,7 @@ interface ApplicationPreviewProps {
     onBack: () => void;
     onSubmit: (data: ApplicationFormData) => void;
     isSubmitting: boolean;
+    submitError?: string | null;
     onLanguageChange: (lang: Language) => void;
 }
 
@@ -21,6 +22,7 @@ export default function ApplicationPreview({
     onBack,
     onSubmit,
     isSubmitting,
+    submitError,
     onLanguageChange,
 }: ApplicationPreviewProps) {
     const t = translations[language];
@@ -224,6 +226,12 @@ export default function ApplicationPreview({
                     )}
                 </div>
             </div>
+
+            {submitError && (
+                <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg text-sm sm:text-base">
+                    {submitError}
+                </div>
+            )}
 
             <div className="flex flex-col sm:flex-row justify-between gap-3 sm:gap-4 pb-4 sm:pb-6">
                 <button

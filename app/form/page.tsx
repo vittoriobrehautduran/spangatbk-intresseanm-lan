@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createApplicationFormSchema, type ApplicationFormData } from '@/lib/validation';
+import type { ApplicationSubmitResponse } from '@/types/application-api';
 import { translations, type Language } from '@/lib/translations';
 import ApplicationForm from '@/components/ApplicationForm';
 import ApplicationPreview from '@/components/ApplicationPreview';
@@ -13,6 +14,8 @@ export default function FormPage() {
   const [showPreview, setShowPreview] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitWarnings, setSubmitWarnings] = useState<string[]>([]);
 
   // Create a resolver function that always uses current language
   const createResolver = (lang: Language) => {
@@ -77,10 +80,13 @@ export default function FormPage() {
 
   const handleBack = () => {
     setShowPreview(false);
+    setSubmitError(null);
   };
 
   const handleSubmit = async (data: ApplicationFormData) => {
     setIsSubmitting(true);
+    setSubmitError(null);
+
     try {
       const response = await fetch('/api/applications', {
         method: 'POST',
@@ -90,15 +96,33 @@ export default function FormPage() {
         body: JSON.stringify(data),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to submit application');
+      const result: ApplicationSubmitResponse = await response.json().catch(() => ({
+        success: false,
+        dbSaved: false,
+        emailsSent: { student: false, club: false, guardians: false },
+        warnings: [],
+        error: 'Invalid server response',
+      }));
+
+      if (!result.success) {
+        const message =
+          language === 'sv'
+            ? 'Ett fel uppstod när ansökan skulle skickas. Försök igen om en stund.'
+            : 'An error occurred while submitting the application. Please try again shortly.';
+        setSubmitError(result.error ? `${message} (${result.error})` : message);
+        return;
       }
 
+      setSubmitWarnings(result.warnings || []);
       setSubmitSuccess(true);
       form.reset();
     } catch (error) {
       console.error('Error submitting application:', error);
-      alert('Ett fel uppstod när ansökan skulle skickas. Försök igen.');
+      setSubmitError(
+        language === 'sv'
+          ? 'Kunde inte nå servern. Kontrollera din internetanslutning och försök igen.'
+          : 'Could not reach the server. Check your internet connection and try again.'
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -131,9 +155,17 @@ export default function FormPage() {
               ? 'Din intresseanmälan har skickats in. Vi kommer att kontakta dig så snart som möjligt.'
               : 'Your interest application has been submitted. We will contact you as soon as possible.'}
           </p>
+          {submitWarnings.length > 0 && (
+            <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-4 py-3 mb-5 sm:mb-6">
+              {language === 'sv'
+                ? 'Din ansökan har tagits emot, men en del av hanteringen kan ha blivit fördröjd.'
+                : 'Your application was received, but part of the processing may have been delayed.'}
+            </p>
+          )}
           <button
             onClick={() => {
               setSubmitSuccess(false);
+              setSubmitWarnings([]);
               form.reset();
               setShowPreview(false);
             }}
@@ -155,6 +187,7 @@ export default function FormPage() {
           onBack={handleBack}
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
+          submitError={submitError}
           onLanguageChange={setLanguage}
         />
       ) : (

@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { createClient } from '@/lib/supabase/server';
 import { applicationFormSchema } from '@/lib/validation';
 import type { Application } from '@/types/database';
+import type { ApplicationSubmitResponse } from '@/types/application-api';
 import { checkIPRateLimit, recordIPRateLimit, getIPAddress } from '@/lib/rateLimit';
 import { sendConfirmationEmail, sendGuardianConfirmationEmails, sendClubNotificationEmail } from '@/lib/email';
 
@@ -135,43 +136,60 @@ export async function POST(request: NextRequest) {
     }
 
     // Send confirmation emails regardless of database success/failure
-    // Use saved application data if available, otherwise use prepared data
     const emailApplication = savedApplication || applicationForEmail;
-    
-    try {
-      // Send confirmation to student
-      await sendConfirmationEmail(emailApplication, 'sv');
-      
-      // Send emails to guardians if they exist
-      if (emailApplication.has_guardian) {
-        await sendGuardianConfirmationEmails(emailApplication, 'sv');
-      }
+    const warnings: string[] = [];
 
-      // Send notification to tennis club with all form details
-      await sendClubNotificationEmail(emailApplication);
-    } catch (emailError) {
-      // Log email error but don't fail the request
-      console.error('Email sending failed:', emailError);
+    const studentEmailSent = await sendConfirmationEmail(emailApplication, 'sv');
+    if (!studentEmailSent) {
+      warnings.push('Bekräftelsemejl till eleven kunde inte skickas');
     }
 
-    // Return response based on database save result
-    if (!dbSaveSuccess) {
-      const errorMessage = !supabaseConfigured
-        ? 'Database not configured - application received and emails sent'
-        : 'Failed to save application to database - emails have been sent';
-      
+    let guardiansEmailSent = true;
+    if (emailApplication.has_guardian) {
+      guardiansEmailSent = await sendGuardianConfirmationEmails(emailApplication, 'sv');
+      if (!guardiansEmailSent) {
+        warnings.push('Bekräftelsemejl till målsman kunde inte skickas');
+      }
+    }
+
+    const clubEmailSent = await sendClubNotificationEmail(emailApplication);
+    if (!clubEmailSent) {
+      warnings.push('Notifieringsmejl till klubben kunde inte skickas');
+    }
+
+    const emailsSent = {
+      student: studentEmailSent,
+      club: clubEmailSent,
+      guardians: guardiansEmailSent,
+    };
+
+    // Application counts as received if saved to DB or club was notified by email
+    const applicationReceived = dbSaveSuccess || clubEmailSent;
+
+    if (!dbSaveSuccess && supabaseConfigured) {
+      warnings.unshift('Ansökan kunde inte sparas i databasen');
+    }
+
+    const responseBody: ApplicationSubmitResponse = {
+      success: applicationReceived,
+      dbSaved: dbSaveSuccess,
+      emailsSent,
+      warnings,
+      ...(savedApplication ? { data: savedApplication } : {}),
+    };
+
+    if (!applicationReceived) {
       return NextResponse.json(
-        { 
-          error: !supabaseConfigured ? 'Database not configured' : 'Failed to save application to database',
+        {
+          ...responseBody,
+          error: 'Failed to process application',
           details: dbError?.message || null,
-          message: errorMessage,
-          emailsSent: true,
         },
-        { status: supabaseConfigured ? 500 : 201 }
+        { status: 500 }
       );
     }
 
-    return NextResponse.json({ success: true, data: savedApplication }, { status: 201 });
+    return NextResponse.json(responseBody, { status: 201 });
   } catch (error: any) {
     console.error('Validation or server error:', error);
     

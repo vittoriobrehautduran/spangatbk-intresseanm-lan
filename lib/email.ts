@@ -126,16 +126,16 @@ ${isSwedish ? 'Detta är ett automatiskt meddelande. Vänligen svara inte på de
   `.trim();
 }
 
-// Send confirmation email to student
+// Send confirmation email to student. Returns true if the email was sent.
 export async function sendConfirmationEmail(
   application: Application,
   language: 'sv' | 'en' = 'sv'
-): Promise<void> {
+): Promise<boolean> {
   const fromEmail = process.env.AWS_SES_FROM_EMAIL;
   
   if (!fromEmail) {
     console.warn('AWS_SES_FROM_EMAIL not configured, skipping email send');
-    return;
+    return false;
   }
 
   const studentName = `${application.student_first_name} ${application.student_last_name}`;
@@ -169,22 +169,23 @@ export async function sendConfirmationEmail(
   try {
     await sesClient.send(command);
     console.log(`Confirmation email sent to ${application.student_email}`);
+    return true;
   } catch (error) {
-    // Log error but don't fail the request if email fails
     console.error('Failed to send confirmation email:', error);
+    return false;
   }
 }
 
-// Send confirmation email to guardians if they exist
+// Send confirmation email to guardians if they exist. Returns true if all needed emails were sent.
 export async function sendGuardianConfirmationEmails(
   application: Application,
   language: 'sv' | 'en' = 'sv'
-): Promise<void> {
+): Promise<boolean> {
   const fromEmail = process.env.AWS_SES_FROM_EMAIL;
   
   if (!fromEmail) {
     console.warn('AWS_SES_FROM_EMAIL not configured, skipping guardian emails');
-    return;
+    return false;
   }
 
   const studentName = `${application.student_first_name} ${application.student_last_name}`;
@@ -205,8 +206,10 @@ export async function sendGuardianConfirmationEmails(
   );
 
   if (uniqueGuardianEmails.length === 0) {
-    return;
+    return true;
   }
+
+  let sentCount = 0;
 
   const guardianHtml = `
 <!DOCTYPE html>
@@ -329,11 +332,13 @@ ${isSwedish ? 'Detta är ett automatiskt meddelande. Vänligen svara inte på de
     try {
       await sesClient.send(command);
       console.log(`Guardian confirmation email sent to ${email}`);
+      sentCount++;
     } catch (error) {
-      // Log error but don't fail the request if email fails
       console.error(`Failed to send guardian email to ${email}:`, error);
     }
   }
+
+  return sentCount === uniqueGuardianEmails.length;
 }
 
 // Format preferred times for display
@@ -686,19 +691,19 @@ Logga in på adminpanelen för att hantera denna ansökan.
   `.trim();
 }
 
-// Send notification email to tennis club
-export async function sendClubNotificationEmail(application: Application): Promise<void> {
+// Send notification email to tennis club. Returns true if the email was sent.
+export async function sendClubNotificationEmail(application: Application): Promise<boolean> {
   const fromEmail = process.env.AWS_SES_FROM_EMAIL;
   const clubEmail = process.env.AWS_SES_CLUB_EMAIL;
   
   if (!fromEmail) {
     console.warn('AWS_SES_FROM_EMAIL not configured, skipping club notification email');
-    return;
+    return false;
   }
 
   if (!clubEmail) {
     console.warn('AWS_SES_CLUB_EMAIL not configured, skipping club notification email');
-    return;
+    return false;
   }
 
   const studentName = `${application.student_first_name} ${application.student_last_name}`;
@@ -729,9 +734,10 @@ export async function sendClubNotificationEmail(application: Application): Promi
   try {
     await sesClient.send(command);
     console.log(`Club notification email sent to ${clubEmail}`);
+    return true;
   } catch (error) {
-    // Log error but don't fail the request if email fails
     console.error('Failed to send club notification email:', error);
+    return false;
   }
 }
 
