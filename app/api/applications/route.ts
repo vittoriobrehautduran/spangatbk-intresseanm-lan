@@ -6,6 +6,7 @@ import type { Application } from '@/types/database';
 import type { ApplicationSubmitResponse } from '@/types/application-api';
 import { checkIPRateLimit, recordIPRateLimit, getIPAddress } from '@/lib/rateLimit';
 import { sendConfirmationEmail, sendGuardianConfirmationEmails, sendClubNotificationEmail } from '@/lib/email';
+import { reportException, reportSubmissionFailure, reportSubmissionWarning } from '@/lib/monitoring';
 
 export const runtime = 'nodejs';
 
@@ -179,6 +180,14 @@ export async function POST(request: NextRequest) {
     };
 
     if (!applicationReceived) {
+      reportSubmissionFailure('Application submission failed completely', {
+        dbSaved: dbSaveSuccess,
+        emailsSent,
+        warnings,
+        dbError: dbError?.message || null,
+        ipAddress,
+      });
+
       return NextResponse.json(
         {
           ...responseBody,
@@ -187,6 +196,15 @@ export async function POST(request: NextRequest) {
         },
         { status: 500 }
       );
+    }
+
+    if (warnings.length > 0) {
+      reportSubmissionWarning('Application submitted with warnings', {
+        dbSaved: dbSaveSuccess,
+        emailsSent,
+        warnings,
+        applicationId: savedApplication?.id || emailApplication.id,
+      });
     }
 
     return NextResponse.json(responseBody, { status: 201 });
@@ -199,6 +217,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    reportException(error, { area: 'applications-api' });
 
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },

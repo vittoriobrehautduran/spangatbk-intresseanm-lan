@@ -8,6 +8,7 @@ import type { ApplicationSubmitResponse } from '@/types/application-api';
 import { translations, type Language } from '@/lib/translations';
 import ApplicationForm from '@/components/ApplicationForm';
 import ApplicationPreview from '@/components/ApplicationPreview';
+import { reportException, reportSubmissionFailure } from '@/lib/monitoring';
 
 export default function FormPage() {
   const [language, setLanguage] = useState<Language>('sv');
@@ -110,6 +111,12 @@ export default function FormPage() {
             ? 'Ett fel uppstod när ansökan skulle skickas. Försök igen om en stund.'
             : 'An error occurred while submitting the application. Please try again shortly.';
         setSubmitError(result.error ? `${message} (${result.error})` : message);
+        reportSubmissionFailure('Form submission rejected by API', {
+          status: response.status,
+          error: result.error,
+          warnings: result.warnings,
+          emailsSent: result.emailsSent,
+        });
         return;
       }
 
@@ -118,6 +125,7 @@ export default function FormPage() {
       form.reset();
     } catch (error) {
       console.error('Error submitting application:', error);
+      reportException(error, { area: 'form-submit-client' });
       setSubmitError(
         language === 'sv'
           ? 'Kunde inte nå servern. Kontrollera din internetanslutning och försök igen.'
