@@ -36,8 +36,8 @@ export default defineConfig({
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
-    env: {
-      ...process.env,
-    },
+    env: Object.fromEntries(
+      Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined)
+    ),
   },
 });
