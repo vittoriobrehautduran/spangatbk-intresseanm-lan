@@ -1,8 +1,9 @@
 import type { BrowserOptions, EdgeOptions, NodeOptions } from '@sentry/nextjs';
+import { getAppEnvironment } from './app-environment';
 
 // Shared Sentry settings. Only active when NEXT_PUBLIC_SENTRY_DSN is set in the environment.
 export function getSentryOptions(): NodeOptions & BrowserOptions & EdgeOptions {
-  const environment = process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development';
+  const environment = getAppEnvironment();
   const isProduction = environment === 'production';
 
   return {

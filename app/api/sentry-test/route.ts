@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
+import { isStagingDeploy } from '@/lib/app-environment';
 import { reportException, reportSubmissionWarning } from '@/lib/monitoring';
 
 export const runtime = 'nodejs';
 
 // Staging-only endpoint to verify Sentry is receiving errors.
 export async function GET(request: Request) {
-  const environment = process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV;
-
-  if (environment !== 'staging') {
+  if (!isStagingDeploy()) {
     return NextResponse.json({ error: 'Not available' }, { status: 404 });
   }
 
